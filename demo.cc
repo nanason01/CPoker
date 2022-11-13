@@ -49,15 +49,37 @@ public:
     // 2nd player folding makes player 1 win 1.0 in any state
     GameTree()
         :
-        init_probs(6, 1.0 / 6.0),
-        first_action(6, { 1.0 }), first_bet_response(6, { 1.0 }) {}
+        init_probs({ 0.5, 0.0, 0.0, 0.0, 0.0, 0.5 }),
+        first_action(6, { 0.01 }), first_bet_response(6, { 0.01 }) {}
 
     Utility get_call_utility(int card_1, int card_2) {
-        return card_1 > card_2 ? 2.0 : -2.0;
+        return card_1 > card_2 ? 3.0 : -3.0;
     }
 
     Utility get_fold_utility(int card_1, int card_2) {
         return 1.0;
+    }
+
+    float get_init_prob(int card_1, int card_2) {
+        switch (card_1) {
+        case 1:
+            if (card_2 == 2)
+                return init_probs[0];
+            else
+                return init_probs[1];
+        case 2:
+            if (card_2 == 1)
+                return init_probs[2];
+            else
+                return init_probs[3];
+        case 3:
+            if (card_2 == 1)
+                return init_probs[4];
+            else
+                return init_probs[5];
+        }
+
+        return 0.0;
     }
 
     // Train this outcome once and return the utility
@@ -113,7 +135,7 @@ public:
     }
 
     // Train this outcome (and it's descendants) once and return utility
-    Utility train_first_action(int card_1, int card_2, bool print = false) {
+    Utility train_first_action(int card_1, int card_2, float prob, bool print = false) {
         // probs in our current strat
         float sum_bet_regr = first_action[(card_1 - 1) * 2].sum_regret;
         float sum_check_regr = first_action[(card_1 - 1) * 2 + 1].sum_regret;
@@ -124,7 +146,7 @@ public:
         float check = sum_check_regr / sum_regret;
 
         // recalc utility of each action
-        Utility bet_util = train_bet_response(card_1, card_2, bet);
+        Utility bet_util = train_bet_response(card_1, card_2, bet * prob);
         Utility check_util = get_check_util(card_1, card_2);
 
         if (print) {
@@ -137,8 +159,8 @@ public:
         float bet_regr = bet_util > curr_util ? bet_util - curr_util : 0.0;
         float check_regr = check_util > curr_util ? check_util - curr_util : 0.0;
 
-        first_action[(card_1 - 1) * 2].sum_regret += bet_regr;
-        first_action[(card_1 - 1) * 2 + 1].sum_regret += check_regr;
+        first_action[(card_1 - 1) * 2].sum_regret += prob * bet_regr;
+        first_action[(card_1 - 1) * 2 + 1].sum_regret += prob * check_regr;
 
         // return util (calced on old values)
         return curr_util;
@@ -152,12 +174,12 @@ public:
             for (int card_2 = 1; card_2 <= 3; card_2++) {
                 if (card_1 == card_2) continue;
 
-                Utility cur_util = train_first_action(card_1, card_2);
+                Utility cur_util = train_first_action(card_1, card_2, get_init_prob(card_1, card_2));
 
                 if (print)
                     cout << card_1 << " " << card_2 << ": " << cur_util << "\n";
 
-                running_util += cur_util * 1.0 / 6.0;
+                running_util += cur_util * get_init_prob(card_1, card_2);
             }
         }
 
