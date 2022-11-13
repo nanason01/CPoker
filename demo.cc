@@ -4,7 +4,7 @@
 // Both players get 1, 2, or 3 (without duplicates)
 // If it makes it to showdown, the player with higher card wins
 // They have to ante 1 point each
-// The first player can either bet 2 or check
+// The first player can either bet 1 point or check
 // The second player can either call or fold, or check (no betting)
 //
 
@@ -61,7 +61,7 @@ public:
     }
 
     // Train this outcome once and return the utility
-    Utility train_bet_response(int card_1, int card_2, bool print = false) {
+    Utility train_bet_response(int card_1, int card_2, float prob, bool print = false) {
         // get our current strategy
         float sum_call_regr = first_bet_response[(card_2 - 1) * 2].sum_regret;
         float sum_fold_regr = first_bet_response[(card_2 - 1) * 2 + 1].sum_regret;
@@ -97,8 +97,8 @@ public:
         float call_regr = call_util < curr_util ? curr_util - call_util : 0.0;
         float fold_regr = fold_util < curr_util ? curr_util - fold_util : 0.0;
 
-        first_bet_response[(card_2 - 1) * 2].sum_regret += call_regr;
-        first_bet_response[(card_2 - 1) * 2 + 1].sum_regret += fold_regr;
+        first_bet_response[(card_2 - 1) * 2].sum_regret += prob * call_regr;
+        first_bet_response[(card_2 - 1) * 2 + 1].sum_regret += prob * fold_regr;
 
         if (print)
             cout << "call regr: " << call_regr << " fold regr: " << fold_regr << "\n";
@@ -124,7 +124,7 @@ public:
         float check = sum_check_regr / sum_regret;
 
         // recalc utility of each action
-        Utility bet_util = train_bet_response(card_1, card_2);
+        Utility bet_util = train_bet_response(card_1, card_2, bet);
         Utility check_util = get_check_util(card_1, card_2);
 
         if (print) {
