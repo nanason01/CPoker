@@ -26,16 +26,20 @@ using std::tuple;
 
 // parameter pack helpers for int packs and Bet packs
 
+
 template <typename T>
 struct get {
-    template <T first, T... others>
+    template <T _first, T... others>
     static constexpr T first() {
-        return first;
+        return _first;
     }
 
-    template <T... others, T last>
+    template <T first, T... others>
     static constexpr T last() {
-        return last;
+        if constexpr (sizeof...(others) == 0)
+            return first;
+        else
+            return last<others...>();
     }
 
     template <int index, T first, T... others>
@@ -45,8 +49,34 @@ struct get {
         else
             return idx<index - 1, others...>();
     }
-};
 
+    template <T item, T first_in_pack, T... pack>
+    static constexpr bool _contains_not_last() {
+        if constexpr (item == first_in_pack)
+            return true;
+        else if constexpr (sizeof...(pack) <= 1)
+            return false;
+        else
+            return _contains_not_last<item, pack...>();
+    }
+
+    // helper to check if an item appears in pack except for the last item in pack
+    // mostly useful for checking valid state, ie 0 or 1 can't appear in the middle of an idx
+    template <T item, T... pack>
+    static constexpr bool contains_not_last() {
+        static_assert(sizeof...(pack) > 0, "pack is empty");
+        return _contains_not_last<item, pack...>();
+    }
+
+    /// debug print: this will succeed then call a template that fails, revealing items in comp
+    template <T dne>
+    static void fail() {}
+
+    template <T... items>
+    static void print_param_pack() {
+        fail<>();
+    }
+};
 
 // note: floating point template arguments are not allowed, 
 // these numbers are % of pots
@@ -84,20 +114,8 @@ struct Bet {
 //
 template <size_t nr_hands, typename... bets>
 class Round {
+public:  // TODO: finegrain public/private fxns
     static_assert(sizeof...(bets) > 0, "Must have at least one betting round");
-
-    template <int bet_idx, typename _first_bet, typename... _bets>
-    static constexpr auto _get_bet() {
-        if constexpr (bet_idx == 0)
-            return _first_bet();
-        else
-            return _get_bet<bet_idx - 1, bets...>();
-    }
-
-    template <int bet_idx>
-    static constexpr auto get_bet() {
-        return _get_bet<bet_idx, bets...>();
-    }
 
     // the initial probability for each hand per player
     array<float, nr_hands> p1_starting, p2_starting;
@@ -105,93 +123,183 @@ class Round {
     // a mapping from hand -> int, where f(a) > f(b) iff hand a beats hand b
     array<int, nr_hands> hand_rankings;
 
+    // helper to check whether a state has any invalid action after terminal state
+    // doesn't check for all-in terminal states, TODO, but currently that would be circular
+    template <int... idxs>
+    static constexpr void _check_valid_idx() {
+        static_assert(sizeof...(idxs) > 0, "empty idx passed to _check_valid_idx");
+        static_assert(!get<int>::contains_not_last<0, idxs...>(),
+            "Invalid state: action after a fold");
+        static_assert(!get<int>::contains_not_last<1, idxs...>(),
+            "Invalid state: action after a terminal call");
+    }
+
     // check whether this idxs pack represents a valid state
     // doesn't check any out of boundness, that will be checked elsewhere
-    template <int... idxs>
-    static constexpr inline void check_valid_idx() {
-        static_assert(get<int>::first<idxs...>() != 0, "Invalid state: Can't fold first to act");
+    template <int first_idx, int... idxs>
+    static constexpr void check_valid_idx() {
+        static_assert(first_idx != 0, "Invalid state: Can't fold first to act");
 
-        static_assert(sizeof...(idxs) > 1 &&
-            get<int>::first<idxs...>() == 1 &&
-            get<int>::idx<1, idxs...>() == 0,
-            "Invalid state: Can't fold facing a check");
-
-        // TODO: check for invalid action after a terminal state
+        if constexpr (first_idx == 1) {
+            if constexpr (sizeof...(idxs) > 0)
+                check_valid_idx<idxs...>();
+        } else {
+            _check_valid_idx<first_idx, idxs...>();
+        }
+    }
+    static constexpr void check_valid_idx() {
+        // empty state is valid
     }
 
-    // helper to recursively traverse bets
-    template <int... idxs, int last>
-    static constexpr inline float _mta_helper() {
-        constexpr auto curr_bet = get_bet<sizeof...(idxs)>();
-
-        if constexpr (sizeof...(idxs) == 0)
-            return ANTE * curr_bet. template idx<last>();
+    template <int bet_idx, int bet_num, typename _first_bet, typename... _bets>
+    static constexpr float _get_bet() {
+        if constexpr (bet_num == 1)
+            return _first_bet::template idx<bet_idx>();
         else
-            return (1 + curr_bet) * _mta_helper<idxs...>();
+            return _get_bet<bet_idx, bet_num - 1, _bets...>();
     }
 
-    // returns utility required to do the last action
-    // it may make sense to support terminal states: ie those ending in check/fold
+    // returns the bet size at this idxs pack, not accounting for all_in
+    template <int first_idx, int... idxs>
+    static constexpr float get_bet() {
+        check_valid_idx<first_idx, idxs...>();
+
+        if constexpr (sizeof...(idxs) == 0) {
+            return _get_bet<first_idx, 1, bets...>();
+        } else {
+            constexpr int last_idx = get<int>::last<idxs...>();
+
+            if constexpr (first_idx == 1)
+                return _get_bet<last_idx, sizeof...(idxs), bets...>();
+            else
+                return _get_bet<last_idx, sizeof...(idxs) + 1, bets...>();
+        }
+    }
+
     template <int... idxs>
-    static constexpr inline float _mta() {
-        static_assert(sizeof...(idxs) > 0, "Invalid call to _mta with empty state");
-        static_assert(get<int>::last<idxs...>() > 1, "Invalid call to _mta with ending check/fold");
+    struct _mta {
+        // get the mta with this number of idxs included
+        template <int num, int... partial_idxs>
+        static constexpr float _amt() {
+            // done building template case
+            if constexpr (sizeof...(partial_idxs) == num) {
+                constexpr float curr_bet = get_bet<partial_idxs...>();
 
-        if (_mta_helper<idxs...>() >= STACK_SIZE)
-            return STACK_SIZE;
-        else
-            return _mta_helper<idxs...>();
-    }
+                if constexpr (num == 0)
+                    return 0.0;
+                else if constexpr (num == 1)
+                    return ANTE * curr_bet;
+                else
+                    return (1 + curr_bet) * _amt<num - 1>();
+            } else {
+                constexpr int next_idx = get<int>::idx<sizeof...(partial_idxs), idxs...>();
+                return _amt<num, partial_idxs..., next_idx>();
+            }
+        }
+    };
 
     // mta: Money To Act
     // returns the utility required to do the last action
     // eg bet 0.7x then raise 3x will return (0.7*ANTE)*3.0
     // currently no use case where the last action was fold/check, so that isn't allowed
-    template <int first, int... idxs>
-    static constexpr inline float mta() {
-        check_valid_idx<first, idxs...>();
+    template <int... idxs>
+    static constexpr float mta() {
+        constexpr float actual_amt = _mta<idxs...>::template _amt<sizeof...(idxs)>();
 
-        // first action being a check means shift back
-        if constexpr (first == 1) {
-            if constexpr (sizeof...(idxs) == 0)
-                return 0.0;
-            else
-                return _mta<idxs...>();
+        if constexpr (actual_amt >= STACK_SIZE)
+            return STACK_SIZE;
+        else
+            return actual_amt;
+    }
+
+    // all mip helpers assume that the idx has been normalized
+    // ie no checks
+    // get money in pot when the last action was a fold
+    template <int... idxs>
+    static constexpr float _mip_fold() {
+        static_assert(get<int>::last<idxs...>() == 0);
+        static_assert(sizeof...(idxs) >= 2);
+
+        constexpr int prev1 = sizeof...(idxs) - 1;
+        constexpr int prev2 = sizeof...(idxs) - 2;
+
+        if constexpr (prev2 > 0) {
+            return ANTE +
+                _mta<idxs...>::template _amt<prev2>() +
+                _mta<idxs...>::template _amt<prev1>();
         } else {
-            return _mta<first, idxs...>();
+            return ANTE +
+                _mta<idxs...>::template _amt<prev1>();
+        }
+        // can't fold facing nothing
+    }
+
+    // get money in pot when the last action was a call
+    template <int... idxs>
+    static constexpr float _mip_call() {
+        static_assert(get<int>::last<idxs...>() == 1);
+
+        constexpr int prev1 = sizeof...(idxs) - 1;
+
+        if constexpr (prev1 > 0) {
+            return ANTE + 2.0 * _mta<idxs...>::template _amt<prev1>();
+        } else {
+            // check-through
+            return ANTE;
         }
     }
-    template <>
-    static constexpr inline float mta() {
-        return 0.0;  // initial state case
+
+    // get money in pot when the last action was a bet
+    template <int... idxs>
+    static constexpr float _mip_bet() {
+        static_assert(get<int>::last<idxs...>() >= 2);
+        static_assert(sizeof...(idxs) > 0);
+
+        constexpr int curr = sizeof...(idxs);
+        constexpr int prev1 = sizeof...(idxs) - 1;
+
+        if constexpr (prev1 > 0) {
+            return ANTE +
+                _mta<idxs...>::template _amt<prev1>() +
+                _mta<idxs...>::template _amt<curr>();
+        } else {
+            return ANTE +
+                _mta<idxs...>::template _amt<curr>();
+        }
+    }
+
+    // mip without an initial check
+    template <int... idxs>
+    static constexpr float _mip() {
+        if constexpr (sizeof...(idxs) == 0)
+            return ANTE;
+        else if constexpr (get<int>::last<idxs...>() == 0)
+            return _mip_fold<idxs...>();
+        else if constexpr (get<int>::last<idxs...>() == 1)
+            return _mip_call<idxs...>();
+        else
+            return _mip_bet<idxs...>();
+    }
+
+    template <int first, int... idxs>
+    static constexpr float _mip_rm_first() {
+        return _mip<idxs...>();
     }
 
     // mip: Money In Pot
     // returns the utility in some game tree state
     // allows for terminal states, fold is disregarded and a call
     // just matches the prev bet (as it should)
-    template <int... idxs, int prev, int last>
-    static constexpr inline float mip() {
-        static_assert(prev > 0, "Action after a fold");
+    template <int... idxs>
+    static constexpr float mip() {
+        check_valid_idx<idxs...>();
 
-        if constexpr (last == 0) {  // last act fold case
-            return mta<idxs...>() + mta<idxs..., prev>();
-        } else if constexpr (last == 1) {  // last act call case
-            return 2.0 * mta<idxs..., prev>();
-        } else {  // last act bet/raise case
-            return mta<idxs..., prev>() + mta<idxs..., prev, last>();
-        }
-    }
-    template <int first>
-    static constexpr inline float mip() {
-        if constexpr (first == 1)
-            return 0.0;  // check case
+        if constexpr (sizeof...(idxs) == 0)
+            return ANTE;
+        else if constexpr (get<int>::first<idxs...>() == 1)
+            return _mip_rm_first<idxs...>();
         else
-            return mta<first>();  // single bet case
-    }
-    template <>
-    static constexpr inline float mip() {
-        return 0.0;  // no action case
+            return _mip<idxs...>();
     }
 
     template <int... idxs>
@@ -266,7 +374,6 @@ class Round {
         else
             return _num_children<first, idxs...>();
     }
-    template <>
     static constexpr inline int num_children() {
         return _num_children<>();
     }
@@ -279,12 +386,15 @@ class Round {
 using std::cout;
 
 int main() {
-    using bet = Bet<50, 75, 110>;
 
-    cout << bet::count() << "\n";
-    cout << bet::idx<2>() << " " << bet::idx<3>() << " " << bet::idx<4>() << "\n";
+    using main_round = Round<10, Bet<50, 75, 100>, Bet<200, 500>>;
 
-    Round<10, Bet<50, 75, 100, 125>, Bet<300, 400, 500>> main_round;
+    cout << "get_bet: " << main_round::get_bet<4, 2>() << std::endl;
+    cout << "_mta: " << main_round::_mta<4, 2>::_amt<1>() << std::endl;
 
+    cout << "mta: " << main_round::mta<4, 2>() << std::endl;
+    cout << "mip: " << main_round::mip<3>() << std::endl;
+    cout << "mip: " << main_round::mip<4, 2>() << std::endl;
+    cout << "mip: " << main_round::mip<3, 1>() << std::endl;
 
 }
