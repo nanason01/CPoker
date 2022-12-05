@@ -57,3 +57,8 @@ struct get {
         fail<>();
     }
 };
+
+// helper struct to separate idxs of idxs
+// use to separate idxs into different rounds
+template <int... idxs>
+struct IdxPack {};
