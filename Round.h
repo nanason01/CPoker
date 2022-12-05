@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <array>
+#include <ratio>
 
 #include "Pack.h"
 #include "Bet.h"
@@ -42,12 +42,6 @@ template <size_t nr_hands, typename... bets>
 class Round {
 public:  // TODO: finegrain public/private fxns
     static_assert(sizeof...(bets) > 0, "Must have at least one betting round");
-
-    // the initial probability for each hand per player
-    std::array<float, nr_hands> p1_starting, p2_starting;
-
-    // a mapping from hand -> int, where f(a) > f(b) iff hand a beats hand b
-    std::array<int, nr_hands> hand_rankings;
 
     // helper to check whether a state has any invalid action after terminal state
     // doesn't check for all-in terminal states, TODO, but currently that would be circular
@@ -82,7 +76,7 @@ public:  // TODO: finegrain public/private fxns
     }
 
     template <int bet_idx, int bet_num, typename _first_bet, typename... _bets>
-    static constexpr float _get_bet() {
+    static constexpr auto _get_bet() {
         if constexpr (bet_num == 1)
             return _first_bet::template idx<bet_idx>();
         else
@@ -91,7 +85,7 @@ public:  // TODO: finegrain public/private fxns
 
     // returns the bet size at this idxs pack, not accounting for all_in
     template <int first_idx, int... idxs>
-    static constexpr float get_bet() {
+    static constexpr auto get_bet() {
         check_valid_idx<first_idx, idxs...>();
 
         if constexpr (sizeof...(idxs) == 0) {
@@ -109,7 +103,7 @@ public:  // TODO: finegrain public/private fxns
     template <int... idxs>
     struct _mta_idx {
         template <int num, int... partial_idxs>
-        static constexpr float _get() {
+        static constexpr auto _get() {
             if constexpr (sizeof...(partial_idxs) < num) {
                 constexpr int next_idx = get<int>::template idx<sizeof...(partial_idxs), idxs...>();
                 return _get<num, partial_idxs..., next_idx>();
@@ -123,14 +117,14 @@ public:  // TODO: finegrain public/private fxns
     // returns the utility required to do the last action
     // only considers the first num idxs
     template <int num, int... idxs>
-    static constexpr float mta_idx() {
+    static constexpr auto mta_idx() {
         return _mta_idx<idxs...>::template _get<num>();
     }
 
     template <int... idxs>
     struct _mip_idx {
         template <int num, int... partial_idxs>
-        static constexpr float _get() {
+        static constexpr auto _get() {
             if constexpr (sizeof...(partial_idxs) < num) {
                 constexpr int next_idx = get<int>::template idx<sizeof...(partial_idxs), idxs...>();
                 return _get<num, partial_idxs..., next_idx>();
@@ -144,25 +138,28 @@ public:  // TODO: finegrain public/private fxns
     // returns the total utility in the pot in some situation
     // only considers the first num idxs
     template <int num, int... idxs>
-    static constexpr float mip_idx() {
+    static constexpr auto mip_idx() {
         return _mip_idx<idxs...>::template _get<num>();
     }
 
     template <int... idxs>
-    static constexpr float _mta_no_check() {
+    static constexpr auto _mta_no_check() {
         if constexpr (sizeof...(idxs) == 0) {
             return 0.0;
         } else {
-            constexpr float amt = get_bet<idxs...>() * mip_idx<sizeof...(idxs) - 1, idxs...>();
-            if constexpr (amt >= STACK_SIZE)
-                return STACK_SIZE;
+            constexpr auto amt = std::ratio_multiply<
+                decltype(get_bet<idxs...>()),
+                decltype(mip_idx<sizeof...(idxs) - 1, idxs...>())>{};
+
+            if constexpr (std::ratio_greater_equal<decltype(amt), STACK_SIZE>::value)
+                return STACK_SIZE{};
             else
                 return amt;
         }
     }
 
     template <int check, int... idxs>
-    static constexpr float _mta_rm_first() {
+    static constexpr auto _mta_rm_first() {
         return _mta_no_check<idxs...>();
     }
 
@@ -171,7 +168,7 @@ public:  // TODO: finegrain public/private fxns
     // eg bet 0.7x then raise 3x will return (0.7*ANTE)*3.0
     // currently no use case where the last action was fold/check, so that isn't allowed
     template <int... idxs>
-    static constexpr float mta() {
+    static constexpr auto mta() {
         if constexpr (sizeof...(idxs) == 0)
             return 0.0;
         else if constexpr (get<int>::first<idxs...>() == 1)
@@ -184,7 +181,7 @@ public:  // TODO: finegrain public/private fxns
     // ie no checks
     // get money in pot when the last action was a fold
     template <int... idxs>
-    static constexpr float _mip_fold() {
+    static constexpr auto _mip_fold() {
         static_assert(get<int>::last<idxs...>() == 0);
         static_assert(sizeof...(idxs) >= 2);
 
@@ -192,33 +189,39 @@ public:  // TODO: finegrain public/private fxns
         constexpr int prev2 = sizeof...(idxs) - 2;
 
         if constexpr (prev2 > 0) {
-            return ANTE +
-                mta_idx<prev2, idxs...>() +
-                mta_idx<prev1, idxs...>();
+            return std::ratio_add<
+                ANTE, std::ratio_add<
+                decltype(mta_idx<prev2, idxs...>()),
+                decltype(mta_idx<prev1, idxs...>())>
+            >{};
         } else {
-            return ANTE + mta_idx<prev1, idxs...>();
+            return std::ratio_add<ANTE,
+                decltype(mta_idx<prev1, idxs...>())>{};
         }
         // can't fold facing nothing, no other (valid) case
     }
 
     // get money in pot when the last action was a call
     template <int... idxs>
-    static constexpr float _mip_call() {
+    static constexpr auto _mip_call() {
         static_assert(get<int>::last<idxs...>() == 1);
 
         constexpr int prev1 = sizeof...(idxs) - 1;
 
         if constexpr (prev1 > 0) {
-            return ANTE + 2.0 * mta_idx<prev1, idxs...>();
+            return std::ratio_add<ANTE, std::ratio_add<
+                decltype(mta_idx<prev1, idxs...>()),
+                decltype(mta_idx<prev1, idxs...>())>
+            >{};
         } else {
             // check-through
-            return ANTE;
+            return ANTE{};
         }
     }
 
     // get money in pot when the last action was a bet
     template <int... idxs>
-    static constexpr float _mip_bet() {
+    static constexpr auto _mip_bet() {
         static_assert(get<int>::last<idxs...>() >= 2);
         static_assert(sizeof...(idxs) > 0);
 
@@ -226,19 +229,20 @@ public:  // TODO: finegrain public/private fxns
         constexpr int prev1 = sizeof...(idxs) - 1;
 
         if constexpr (prev1 > 0) {
-            return ANTE +
-                mta_idx<prev1, idxs...>() +
-                mta_idx<curr, idxs...>();
+            return std::ratio_add<ANTE, std::ratio_add<
+                decltype(mta_idx<prev1, idxs...>()),
+                decltype(mta_idx<curr, idxs...>())>
+            >{};
         } else {
-            return ANTE + mta_idx<curr, idxs...>();
+            return std::ratio_add<ANTE, decltype(mta_idx<curr, idxs...>())>{};
         }
     }
 
     // mip without an initial check
     template <int... idxs>
-    static constexpr float _mip() {
+    static constexpr auto _mip() {
         if constexpr (sizeof...(idxs) == 0)
-            return ANTE;
+            return ANTE{};
         else if constexpr (get<int>::last<idxs...>() == 0)
             return _mip_fold<idxs...>();
         else if constexpr (get<int>::last<idxs...>() == 1)
@@ -248,7 +252,7 @@ public:  // TODO: finegrain public/private fxns
     }
 
     template <int first, int... idxs>
-    static constexpr float _mip_rm_first() {
+    static constexpr auto _mip_rm_first() {
         return _mip<idxs...>();
     }
 
@@ -257,11 +261,11 @@ public:  // TODO: finegrain public/private fxns
     // allows for terminal states, fold is disregarded and a call
     // just matches the prev bet (as it should)
     template <int... idxs>
-    static constexpr float mip() {
+    static constexpr auto mip() {
         check_valid_idx<idxs...>();
 
         if constexpr (sizeof...(idxs) == 0)
-            return ANTE;
+            return ANTE{};
         else if constexpr (get<int>::first<idxs...>() == 1)
             return _mip_rm_first<idxs...>();
         else
@@ -270,7 +274,9 @@ public:  // TODO: finegrain public/private fxns
 
     template <int... idxs>
     static constexpr bool is_all_in() {
-        return mta<idxs...>() == STACK_SIZE;
+        return std::ratio_greater_equal<
+            decltype(mta<idxs...>()),
+            STACK_SIZE>::value;
     }
 
     template <int bet_num, typename _first_bet, typename... _bets>
