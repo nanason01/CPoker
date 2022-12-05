@@ -34,3 +34,6 @@ test
 *.exe
 *.out
 *.app
+
+# Vscode
+*.vscode*
