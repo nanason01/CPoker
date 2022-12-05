@@ -12,91 +12,14 @@
 // hands 1-20, and that ANTE is put in the pot to start
 //
 
-#include <vector>
+#pragma once
+
 #include <array>
-#include <tuple>
 
-// STACK_SIZE is independant from ANTE, ie STACK_SIZE is the remaining chips that can go in play
-constexpr float ANTE = 1.0;
-constexpr float STACK_SIZE = 10.0;
+#include "Pack.h"
+#include "Bet.h"
+#include "Configs.h"  // TODO: eventually refactor this out
 
-using std::vector;
-using std::array;
-using std::tuple;
-
-// parameter pack helpers for int packs and Bet packs
-
-
-template <typename T>
-struct get {
-    template <T _first, T... others>
-    static constexpr T first() {
-        return _first;
-    }
-
-    template <T first, T... others>
-    static constexpr T last() {
-        if constexpr (sizeof...(others) == 0)
-            return first;
-        else
-            return last<others...>();
-    }
-
-    template <int index, T first, T... others>
-    static constexpr T idx() {
-        static_assert(index < sizeof...(others) + 1,
-            "Index out of bounds");
-
-        if constexpr (index == 0)
-            return first;
-        else
-            return idx<index - 1, others...>();
-    }
-
-    template <T item, T first_in_pack, T... pack>
-    static constexpr bool _contains_not_last() {
-        if constexpr (item == first_in_pack)
-            return true;
-        else if constexpr (sizeof...(pack) <= 1)
-            return false;
-        else
-            return _contains_not_last<item, pack...>();
-    }
-
-    // helper to check if an item appears in pack except for the last item in pack
-    // mostly useful for checking valid state, ie 0 or 1 can't appear in the middle of an idx
-    template <T item, T... pack>
-    static constexpr bool contains_not_last() {
-        static_assert(sizeof...(pack) > 0, "pack is empty");
-        return _contains_not_last<item, pack...>();
-    }
-
-    /// debug print: this will succeed then call a template that fails, revealing items in comp
-    template <T dne>
-    static void fail() {}
-
-    template <T... items>
-    static void print_param_pack() {
-        fail<>();
-    }
-};
-
-// note: floating point template arguments are not allowed, 
-// these numbers are % of pots
-template <int... szs>
-struct Bet {
-    static_assert(sizeof...(szs) > 0, "Empty betting rounds don't make any sense");
-
-    static constexpr size_t count() { return sizeof...(szs); }
-
-    template <int idx>
-    static constexpr float idx() {
-        static_assert(idx > 1, "Fold or check not in bet");
-
-        // -2 comes from the offset from: fold = 0, check = 1, bet1 = 2...
-        return get<int>::idx<idx - 2, szs...>() / 100.0;
-    }
-};
 
 //
 // Conceptually, each bet is recursive given some input "P of reaching this state"
@@ -121,10 +44,10 @@ public:  // TODO: finegrain public/private fxns
     static_assert(sizeof...(bets) > 0, "Must have at least one betting round");
 
     // the initial probability for each hand per player
-    array<float, nr_hands> p1_starting, p2_starting;
+    std::array<float, nr_hands> p1_starting, p2_starting;
 
     // a mapping from hand -> int, where f(a) > f(b) iff hand a beats hand b
-    array<int, nr_hands> hand_rankings;
+    std::array<int, nr_hands> hand_rankings;
 
     // helper to check whether a state has any invalid action after terminal state
     // doesn't check for all-in terminal states, TODO, but currently that would be circular
@@ -447,33 +370,3 @@ public:  // TODO: finegrain public/private fxns
             return _num_children<idxs...>();
     }
 };
-
-/// below here is testing/sanity checking
-
-#include <iostream>
-
-using std::cout;
-
-int main() {
-
-
-
-    using main_round = Round<10, Bet<50, 75, 100>, Bet<200, 600, 700, 800, 900>>;
-
-    main_round::check_valid_idx<>();
-
-    cout << "get_bet: " << main_round::get_bet<4, 2>() << std::endl;
-    cout << std::endl;
-
-    cout << "mta: " << main_round::mta<4, 3>() << std::endl;
-    cout << "mta: " << main_round::mta<4>() << std::endl;
-    cout << "mip: " << main_round::mip<4, 3, 1>() << std::endl;
-    cout << "mip: " << main_round::mip<4, 2>() << std::endl;
-    cout << "mip: " << main_round::mip<3, 1>() << std::endl;
-    cout << "is_all_in: " << main_round::is_all_in<4, 2>() << std::endl;
-
-    cout << "num_bets:\n";
-    cout << main_round::count_num_bets<1, 3>() << "\n";
-
-    cout << "child states: " << main_round::num_children<1, 4>() << "\n";
-}
