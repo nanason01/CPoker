@@ -44,6 +44,9 @@ struct get {
 
     template <int index, T first, T... others>
     static constexpr T idx() {
+        static_assert(index < sizeof...(others) + 1,
+            "Index out of bounds");
+
         if constexpr (index == 0)
             return first;
         else
@@ -134,21 +137,25 @@ public:  // TODO: finegrain public/private fxns
             "Invalid state: action after a terminal call");
     }
 
-    // check whether this idxs pack represents a valid state
-    // doesn't check any out of boundness, that will be checked elsewhere
     template <int first_idx, int... idxs>
-    static constexpr void check_valid_idx() {
+    static constexpr void _check_valid_idx_nonempty() {
         static_assert(first_idx != 0, "Invalid state: Can't fold first to act");
 
         if constexpr (first_idx == 1) {
             if constexpr (sizeof...(idxs) > 0)
-                check_valid_idx<idxs...>();
+                _check_valid_idx_nonempty<idxs...>();
         } else {
             _check_valid_idx<first_idx, idxs...>();
         }
     }
+
+    // check whether this idxs pack represents a valid state
+    // doesn't check any out of boundness, that will be checked elsewhere
+    template <int... idxs>
     static constexpr void check_valid_idx() {
-        // empty state is valid
+        if constexpr (sizeof...(idxs) > 0)
+            _check_valid_idx_nonempty<idxs...>();
+        // empty idx is valid
     }
 
     template <int bet_idx, int bet_num, typename _first_bet, typename... _bets>
@@ -177,26 +184,64 @@ public:  // TODO: finegrain public/private fxns
     }
 
     template <int... idxs>
-    struct _mta {
-        // get the mta with this number of idxs included
+    struct _mta_idx {
         template <int num, int... partial_idxs>
-        static constexpr float _amt() {
-            // done building template case
-            if constexpr (sizeof...(partial_idxs) == num) {
-                constexpr float curr_bet = get_bet<partial_idxs...>();
-
-                if constexpr (num == 0)
-                    return 0.0;
-                else if constexpr (num == 1)
-                    return ANTE * curr_bet;
-                else
-                    return (1 + curr_bet) * _amt<num - 1>();
+        static constexpr float _get() {
+            if constexpr (sizeof...(partial_idxs) < num) {
+                constexpr int next_idx = get<int>::template idx<sizeof...(partial_idxs), idxs...>();
+                return _get<num, partial_idxs..., next_idx>();
             } else {
-                constexpr int next_idx = get<int>::idx<sizeof...(partial_idxs), idxs...>();
-                return _amt<num, partial_idxs..., next_idx>();
+                return mta<partial_idxs...>();
             }
         }
     };
+
+    // mta: Money To Act
+    // returns the utility required to do the last action
+    // only considers the first num idxs
+    template <int num, int... idxs>
+    static constexpr float mta_idx() {
+        return _mta_idx<idxs...>::template _get<num>();
+    }
+
+    template <int... idxs>
+    struct _mip_idx {
+        template <int num, int... partial_idxs>
+        static constexpr float _get() {
+            if constexpr (sizeof...(partial_idxs) < num) {
+                constexpr int next_idx = get<int>::template idx<sizeof...(partial_idxs), idxs...>();
+                return _get<num, partial_idxs..., next_idx>();
+            } else {
+                return mip<partial_idxs...>();
+            }
+        }
+    };
+
+    // mip: Money In Pot
+    // returns the total utility in the pot in some situation
+    // only considers the first num idxs
+    template <int num, int... idxs>
+    static constexpr float mip_idx() {
+        return _mip_idx<idxs...>::template _get<num>();
+    }
+
+    template <int... idxs>
+    static constexpr float _mta_no_check() {
+        if constexpr (sizeof...(idxs) == 0) {
+            return 0.0;
+        } else {
+            constexpr float amt = get_bet<idxs...>() * mip_idx<sizeof...(idxs) - 1, idxs...>();
+            if constexpr (amt >= STACK_SIZE)
+                return STACK_SIZE;
+            else
+                return amt;
+        }
+    }
+
+    template <int check, int... idxs>
+    static constexpr float _mta_rm_first() {
+        return _mta_no_check<idxs...>();
+    }
 
     // mta: Money To Act
     // returns the utility required to do the last action
@@ -204,12 +249,12 @@ public:  // TODO: finegrain public/private fxns
     // currently no use case where the last action was fold/check, so that isn't allowed
     template <int... idxs>
     static constexpr float mta() {
-        constexpr float actual_amt = _mta<idxs...>::template _amt<sizeof...(idxs)>();
-
-        if constexpr (actual_amt >= STACK_SIZE)
-            return STACK_SIZE;
+        if constexpr (sizeof...(idxs) == 0)
+            return 0.0;
+        else if constexpr (get<int>::first<idxs...>() == 1)
+            return _mta_rm_first<idxs...>();
         else
-            return actual_amt;
+            return _mta_no_check<idxs...>();
     }
 
     // all mip helpers assume that the idx has been normalized
@@ -225,13 +270,12 @@ public:  // TODO: finegrain public/private fxns
 
         if constexpr (prev2 > 0) {
             return ANTE +
-                _mta<idxs...>::template _amt<prev2>() +
-                _mta<idxs...>::template _amt<prev1>();
+                mta_idx<prev2, idxs...>() +
+                mta_idx<prev1, idxs...>();
         } else {
-            return ANTE +
-                _mta<idxs...>::template _amt<prev1>();
+            return ANTE + mta_idx<prev1, idxs...>();
         }
-        // can't fold facing nothing
+        // can't fold facing nothing, no other (valid) case
     }
 
     // get money in pot when the last action was a call
@@ -242,7 +286,7 @@ public:  // TODO: finegrain public/private fxns
         constexpr int prev1 = sizeof...(idxs) - 1;
 
         if constexpr (prev1 > 0) {
-            return ANTE + 2.0 * _mta<idxs...>::template _amt<prev1>();
+            return ANTE + 2.0 * mta_idx<prev1, idxs...>();
         } else {
             // check-through
             return ANTE;
@@ -260,11 +304,10 @@ public:  // TODO: finegrain public/private fxns
 
         if constexpr (prev1 > 0) {
             return ANTE +
-                _mta<idxs...>::template _amt<prev1>() +
-                _mta<idxs...>::template _amt<curr>();
+                mta_idx<prev1, idxs...>() +
+                mta_idx<curr, idxs...>();
         } else {
-            return ANTE +
-                _mta<idxs...>::template _amt<curr>();
+            return ANTE + mta_idx<curr, idxs...>();
         }
     }
 
@@ -303,23 +346,39 @@ public:  // TODO: finegrain public/private fxns
     }
 
     template <int... idxs>
-    static constexpr inline bool is_all_in() {
+    static constexpr bool is_all_in() {
         return mta<idxs...>() == STACK_SIZE;
     }
 
+    template <int bet_num, typename _first_bet, typename... _bets>
+    static constexpr size_t _get_num_bets_possible() {
+        static_assert(bet_num > 0);
+
+        if constexpr (bet_num == 1)
+            return _first_bet::count();
+        else
+            return _get_num_bets_possible<bet_num - 1, _bets...>();
+    }
+
     template <int bet_num, int... idxs>
-    static constexpr inline int _count_num_bets() {
-        constexpr int num_bets_possible = decltype(get_bet<bet_num>())::count();
+    static constexpr int _count_num_bets() {
+        static_assert(sizeof...(idxs) < sizeof...(bets), "No child bets defined");
+
+        constexpr int num_bets_possible = _get_num_bets_possible<sizeof...(idxs) + 1, bets...>();
         if constexpr (bet_num == num_bets_possible - 1)
             return num_bets_possible;
-
         // if this bet size is all_in, all larger bets are also all-ins,
         // thus, we're done counting
         // +2 offset accounts for fold/check in bet idxing
-        if constexpr (is_all_in<idxs..., bet_num + 2>())
+        else if constexpr (is_all_in<idxs..., bet_num + 2>())
             return bet_num + 1;
+        else
+            return _count_num_bets<bet_num + 1, idxs...>();
+    }
 
-        return _count_num_bets<bet_num + 1, idxs...>();
+    template <int first, int... idxs>
+    static constexpr int _count_num_bets_rm_first() {
+        return _count_num_bets<0, idxs...>();
     }
 
     // returns the number of different bets descendant from this state
@@ -327,27 +386,32 @@ public:  // TODO: finegrain public/private fxns
     // this doesn't make sense if there's no action after
     // this doesn't account for check/call/fold in the count, just bets
     template <int... idxs>
-    static constexpr inline int count_num_bets() {
-        static_assert(sizeof...(idxs) < sizeof...(bets), "No child states");
+    static constexpr int count_num_bets() {
+        check_valid_idx<idxs...>();
         static_assert(!is_all_in<idxs...>(), "No bets after all-in");
 
-        return _count_num_bets<0, idxs...>();
+        if constexpr (sizeof...(idxs) == 0)
+            return _count_num_bets<0>();
+        else if constexpr (get<int>::first<idxs...>() == 1)
+            return _count_num_bets_rm_first<idxs...>();
+        else
+            return _count_num_bets<0, idxs...>();
     }
 
     // returns true if this is a terminal state
     template <int... idxs>
-    static constexpr inline bool is_terminal() {
+    static constexpr bool is_terminal() {
+        check_valid_idx<idxs...>();
+
         if constexpr (sizeof...(idxs) < 2)
             return false;
-
-        return get<int>::last<idxs...>() < 2;
+        else
+            return get<int>::last<idxs...>() < 2;
     }
 
     // num children with assumed no intial check
     template <int... idxs>
-    static constexpr inline int _num_children() {
-        static_assert(!is_terminal<idxs...>(), "terminal state has no children");
-
+    static constexpr int _num_children() {
         // no action yet, can't fold
         if constexpr (sizeof...(idxs) == 0)
             return 1 + count_num_bets<idxs...>();
@@ -364,18 +428,23 @@ public:  // TODO: finegrain public/private fxns
         return 2 + count_num_bets<idxs...>();
     }
 
-    // return the number of children from this state
     template <int first, int... idxs>
-    static constexpr inline int num_children() {
-        check_valid_idx<first, idxs...>();
-
-        if constexpr (first == 1)
-            return _num_children<idxs...>();
-        else
-            return _num_children<first, idxs...>();
+    static constexpr int _num_children_rm_first() {
+        return _num_children<idxs...>();
     }
-    static constexpr inline int num_children() {
-        return _num_children<>();
+
+    // return the number of children from this state
+    template <int... idxs>
+    static constexpr int num_children() {
+        check_valid_idx<idxs...>();
+        static_assert(!is_terminal<idxs...>(), "terminal state has no children");
+
+        if constexpr (sizeof...(idxs) == 0)
+            return _num_children<>();
+        else if constexpr (get<int>::first<idxs...>() == 1)
+            return _num_children_rm_first<idxs...>();
+        else
+            return _num_children<idxs...>();
     }
 };
 
@@ -387,14 +456,24 @@ using std::cout;
 
 int main() {
 
-    using main_round = Round<10, Bet<50, 75, 100>, Bet<200, 500>>;
+
+
+    using main_round = Round<10, Bet<50, 75, 100>, Bet<200, 600, 700, 800, 900>>;
+
+    main_round::check_valid_idx<>();
 
     cout << "get_bet: " << main_round::get_bet<4, 2>() << std::endl;
-    cout << "_mta: " << main_round::_mta<4, 2>::_amt<1>() << std::endl;
+    cout << std::endl;
 
-    cout << "mta: " << main_round::mta<4, 2>() << std::endl;
-    cout << "mip: " << main_round::mip<3>() << std::endl;
+    cout << "mta: " << main_round::mta<4, 3>() << std::endl;
+    cout << "mta: " << main_round::mta<4>() << std::endl;
+    cout << "mip: " << main_round::mip<4, 3, 1>() << std::endl;
     cout << "mip: " << main_round::mip<4, 2>() << std::endl;
     cout << "mip: " << main_round::mip<3, 1>() << std::endl;
+    cout << "is_all_in: " << main_round::is_all_in<4, 2>() << std::endl;
 
+    cout << "num_bets:\n";
+    cout << main_round::count_num_bets<1, 3>() << "\n";
+
+    cout << "child states: " << main_round::num_children<1, 4>() << "\n";
 }
