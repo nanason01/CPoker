@@ -6,10 +6,29 @@
 #include <iostream>
 #include <ratio>
 
-#include "Configs.h"
-#include "Pack.h"
-#include "Bet.h"
-#include "Round.h"
+// #include "Configs.h"
+// #include "Pack.h"
+// #include "Bet.h"
+// #include "Round.h"
+
+template <bool b, int i>
+struct Test {
+    static_assert(!sizeof(Test), "failure");
+};
+
+
+template <int i>
+struct Test<false, i> {
+    bool data[i];
+    static constexpr int x = 3;
+
+    Test<false, i - 1> child;
+};
+
+template <>
+struct Test<false, 1> {
+    bool data[1];
+};
 
 template <long num, long dem>
 std::ostream& operator << (std::ostream& os, const std::ratio<num, dem>& v) {
@@ -21,23 +40,7 @@ std::ostream& operator << (std::ostream& os, const std::ratio<num, dem>& v) {
 using std::cout;
 
 int main() {
+    Test<false, 4> f_test;
 
-    using main_round = Round<10, Bet<50, 75, 100>, Bet<200, 600, 700, 800, 900>>;
-
-    main_round::check_valid_idx<>();
-
-    cout << "get_bet: " << main_round::get_bet<4, 2>() << std::endl;
-    cout << std::endl;
-
-    cout << "mta: " << main_round::mta<4, 3>() << std::endl;
-    cout << "mta: " << main_round::mta<4>() << std::endl;
-    cout << "mip: " << main_round::mip<4, 3, 1>() << std::endl;
-    cout << "mip: " << main_round::mip<4, 2>() << std::endl;
-    cout << "mip: " << main_round::mip<3, 1>() << std::endl;
-    cout << "is_all_in: " << main_round::is_all_in<4, 2>() << std::endl;
-
-    cout << "num_bets:\n";
-    cout << main_round::count_num_bets<1, 3>() << "\n";
-
-    cout << "child states: " << main_round::num_children<1, 4>() << "\n";
+    cout << sizeof(f_test) << "\n";
 }

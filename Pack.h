@@ -30,6 +30,24 @@ struct get {
             return idx<index - 1, others...>();
     }
 
+    template <T item, T first, T... others>
+    static constexpr bool _contains() {
+        if constexpr (item == first)
+            return true;
+        else if constexpr (sizeof...(others) == 0)
+            return false;
+        else
+            return _contains<item, others...>();
+    }
+
+    template <T item, T... pack>
+    static constexpr bool contains() {
+        if constexpr (sizeof...(pack) > 0)
+            return _contains<item, pack...>();
+        else
+            return false;
+    }
+
     template <T item, T first_in_pack, T... pack>
     static constexpr bool _contains_not_last() {
         if constexpr (item == first_in_pack)

@@ -9,7 +9,7 @@
 // ctor of the dynamic version and template arguments in the static
 //
 // To make things more complicated, this assumes that there are
-// hands 1-20, and that ANTE is put in the pot to start
+// hands 1-20, and that ante is put in the pot to start
 //
 
 #pragma once
@@ -20,6 +20,15 @@
 #include "Bet.h"
 #include "Configs.h"  // TODO: eventually refactor this out
 
+
+// this is a TODO
+// eventually these will be passed to Game, and Game will arrange the Rounds
+// assigning the proper input ante to each one
+template <typename... bets>
+class Round {
+public:
+    _Round<ANTE, bets...> internal;
+};
 
 //
 // Conceptually, each bet is recursive given some input "P of reaching this state"
@@ -38,8 +47,8 @@
 // calling/checking always idx 1
 // and any available bet/raise sizes defined indexed from 2 on
 //
-template <size_t nr_hands, typename... bets>
-class Round {
+template <typename ante, typename... bets>
+class _Round {
 public:  // TODO: finegrain public/private fxns
     static_assert(sizeof...(bets) > 0, "Must have at least one betting round");
 
@@ -165,7 +174,7 @@ public:  // TODO: finegrain public/private fxns
 
     // mta: Money To Act
     // returns the utility required to do the last action
-    // eg bet 0.7x then raise 3x will return (0.7*ANTE)*3.0
+    // eg bet 0.7x then raise 3x will return (0.7*ante)*3.0
     // currently no use case where the last action was fold/check, so that isn't allowed
     template <int... idxs>
     static constexpr auto mta() {
@@ -190,12 +199,12 @@ public:  // TODO: finegrain public/private fxns
 
         if constexpr (prev2 > 0) {
             return std::ratio_add<
-                ANTE, std::ratio_add<
+                ante, std::ratio_add<
                 decltype(mta_idx<prev2, idxs...>()),
                 decltype(mta_idx<prev1, idxs...>())>
             >{};
         } else {
-            return std::ratio_add<ANTE,
+            return std::ratio_add<ante,
                 decltype(mta_idx<prev1, idxs...>())>{};
         }
         // can't fold facing nothing, no other (valid) case
@@ -209,13 +218,13 @@ public:  // TODO: finegrain public/private fxns
         constexpr int prev1 = sizeof...(idxs) - 1;
 
         if constexpr (prev1 > 0) {
-            return std::ratio_add<ANTE, std::ratio_add<
+            return std::ratio_add<ante, std::ratio_add<
                 decltype(mta_idx<prev1, idxs...>()),
                 decltype(mta_idx<prev1, idxs...>())>
             >{};
         } else {
             // check-through
-            return ANTE{};
+            return ante{};
         }
     }
 
@@ -229,12 +238,12 @@ public:  // TODO: finegrain public/private fxns
         constexpr int prev1 = sizeof...(idxs) - 1;
 
         if constexpr (prev1 > 0) {
-            return std::ratio_add<ANTE, std::ratio_add<
+            return std::ratio_add<ante, std::ratio_add<
                 decltype(mta_idx<prev1, idxs...>()),
                 decltype(mta_idx<curr, idxs...>())>
             >{};
         } else {
-            return std::ratio_add<ANTE, decltype(mta_idx<curr, idxs...>())>{};
+            return std::ratio_add<ante, decltype(mta_idx<curr, idxs...>())>{};
         }
     }
 
@@ -242,7 +251,7 @@ public:  // TODO: finegrain public/private fxns
     template <int... idxs>
     static constexpr auto _mip() {
         if constexpr (sizeof...(idxs) == 0)
-            return ANTE{};
+            return ante{};
         else if constexpr (get<int>::last<idxs...>() == 0)
             return _mip_fold<idxs...>();
         else if constexpr (get<int>::last<idxs...>() == 1)
@@ -265,7 +274,7 @@ public:  // TODO: finegrain public/private fxns
         check_valid_idx<idxs...>();
 
         if constexpr (sizeof...(idxs) == 0)
-            return ANTE{};
+            return ante{};
         else if constexpr (get<int>::first<idxs...>() == 1)
             return _mip_rm_first<idxs...>();
         else
