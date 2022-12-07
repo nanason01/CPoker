@@ -5,9 +5,10 @@
 #include <deque>
 #include <array>
 #include <string>
-#include <algorithm>
+#include <numeric>
 #include <cassert>
 #include <vector>
+#include <limits>
 #include <iostream>
 
 // *** All utilities defined in terms of p1's gain ***
@@ -19,7 +20,7 @@
 #endif
 
 constexpr int MAX_CHILD_STATES = 5;
-constexpr int NUM_HANDS = 10;
+constexpr int NUM_HANDS = 3;
 constexpr float REGRET_INIT = 0.10;
 
 
@@ -51,62 +52,70 @@ struct InfoSets {
     std::array<float, MAX_CHILD_STATES> terminal_util;
 
     inline float& get_regr(const int card, const int child_idx) {
-        return sum_child_regr[ card ][ child_idx ];
+        return sum_child_regr[card][child_idx];
     }
 
     // needed to default initialize arrays
-    InfoSets(bool _is_p1): is_p1(_is_p1), num_children(0) {
+    InfoSets(bool _is_p1) : is_p1(_is_p1), num_children(0) {
         for (int card = 0; card < NUM_HANDS; card++)
-            sum_child_regr[ card ].fill(REGRET_INIT);
+            sum_child_regr[card].fill(REGRET_INIT);
         children.fill(nullptr);
         child_states.fill(Type::Invalid);
     }
 
     void add_showdown(float util) {
         assert(util > 0.0);
-        child_states[ num_children ] = Type::Showdown;
-        terminal_util[ num_children++ ] = util;
+        child_states[num_children] = Type::Showdown;
+        terminal_util[num_children++] = util;
     }
 
     void add_fold(float util) {
         assert(util > 0.0);
-        child_states[ num_children ] = Type::Fold;
-        terminal_util[ num_children++ ] = util;
+        child_states[num_children] = Type::Fold;
+        terminal_util[num_children++] = util;
     }
 
     void add_child(InfoSets* child) {
-        child_states[ num_children ] = Type::Continue;
-        children[ num_children++ ] = child;
+        child_states[num_children] = Type::Continue;
+        children[num_children++] = child;
+    }
+
+    inline float get_sum_regr(int info_state_card) {
+        return std::accumulate(
+            sum_child_regr[info_state_card].begin(),
+            sum_child_regr[info_state_card].end(),
+            0.0);
+    }
+
+    inline float get_strat_prob(int info_state_card, int child_idx, float sum_regr) {
+        return get_regr(info_state_card, child_idx) / sum_regr;
     }
 
     float get_util(int card1, int card2, bool p1_wins, float prob_in) {
         const int info_state_card = is_p1 ? card1 : card2;
 
         // strategy is just normalized sum_child_regrs (for this state)
-        float sum_regr = 0.0;
-        for (int child_idx = 0; child_idx < num_children; child_idx++) {
-            sum_regr += get_regr(info_state_card, child_idx);
-        }
+        float sum_regr = get_sum_regr(info_state_card);
 
         // util is a weighted avg of child utilities
         float util = 0.0;
         std::array<float, MAX_CHILD_STATES> child_utils;
-        for (int child_idx = 0; child_states[ child_idx ] != Type::Invalid; child_idx++) {
-            const float strat_prob = get_regr(info_state_card, child_idx) / sum_regr;
+        for (int child_idx = 0; child_states[child_idx] != Type::Invalid; child_idx++) {
+            const float strat_prob = get_strat_prob(info_state_card, child_idx, sum_regr);
 
-            switch (child_states[ child_idx ]) {
+            switch (child_states[child_idx]) {
             case Type::Continue:
-                child_utils[ child_idx ] = children[ child_idx ]->get_util(card1, card2, p1_wins, prob_in * strat_prob);
+                child_utils[child_idx] = children[child_idx]->get_util(card1, card2, p1_wins, prob_in * strat_prob);
                 break;
             case Type::Fold:
-                child_utils[ child_idx ] = terminal_util[ child_idx ] * (is_p1 ? -1.0 : 1.0);
+                child_utils[child_idx] = terminal_util[child_idx] * (is_p1 ? -1.0 : 1.0);
                 break;
             case Type::Showdown:
-                child_utils[ child_idx ] = terminal_util[ child_idx ] * (p1_wins ? 1.0 : -1.0);
+                child_utils[child_idx] = terminal_util[child_idx] * (p1_wins ? 1.0 : -1.0);
                 break;
             }
 
-            util += child_utils[ child_idx ] * strat_prob;
+            util += child_utils[child_idx] * strat_prob;
         }
 
         // update sum of regrets
@@ -120,7 +129,7 @@ struct InfoSets {
         // whereas p2 is trying to minimize it.
         // So, p1 will update non-negative regrets whereas p2 will update non-positive regrets
         for (int child_idx = 0; child_idx < num_children; child_idx++) {
-            const float regr = child_utils[ child_idx ] - util;
+            const float regr = child_utils[child_idx] - util;
 
             if (is_p1)
                 get_regr(info_state_card, child_idx) += regr > 0.0 ? regr * prob_in : 0.0;
@@ -136,15 +145,76 @@ struct InfoSets {
         int sz = sizeof(InfoSets);
 
         for (int child_idx = 0; num_children; child_idx++) {
-            sz += children[ child_idx ]->size_bytes();
+            sz += children[child_idx]->size_bytes();
         }
 
         return sz;
     }
 
-    // 
-    float get_mes(bool is_p1) {
+    // returns the preferable utility for the player
+    static inline float better(bool for_p1, float util1, float util2) {
+        if (for_p1)
+            return std::max(util1, util2);
+        else
+            return std::min(util1, util2);
+    }
 
+    // get the utility for a player facing a maximally exploitative strategy
+    // the player must play their strategy
+    // but the other player will always put 100% into the highest utility node for them,
+    // also calculated using the mes
+    float get_mes_util(bool for_p1, int card1, int card2, bool p1_wins) {
+        // must play the strategy case
+        if (is_p1 && for_p1) {
+            const float sum_regr = get_sum_regr(is_p1 ? card1 : card2);
+
+            float util = 0.0;
+            for (int child_idx = 0; child_idx < num_children; child_idx++) {
+                const float strat_prob = get_strat_prob(is_p1 ? card1 : card2, child_idx, sum_regr);
+
+                switch (child_states[child_idx]) {
+                case Type::Continue:
+                    util += strat_prob * children[child_idx]->get_mes_util(for_p1, card1, card2, p1_wins);
+                    break;
+                case Type::Fold:
+                    util += strat_prob * terminal_util[child_idx] * (is_p1 ? -1.0 : 1.0);
+                    break;
+                case Type::Showdown:
+                    util += strat_prob * terminal_util[child_idx] * (p1_wins ? 1.0 : -1.0);
+                    break;
+                }
+            }
+
+            return util;
+        }
+        // only play the best outcome case
+        else {
+            const float sum_regr = get_sum_regr(is_p1 ? card1 : card2);
+
+            float best_util = better(for_p1, std::numeric_limits<float>::min(), std::numeric_limits<float>::max());
+
+            for (int child_idx = 0; child_idx < num_children; child_idx++) {
+                switch (child_states[child_idx]) {
+                case Type::Continue: {
+                    float util = children[child_idx]->get_mes_util(for_p1, card1, card2, p1_wins);
+                    best_util = better(!for_p1, util, best_util);
+                    break;
+                }
+                case Type::Fold: {
+                    float util = terminal_util[child_idx] * (is_p1 ? -1.0 : 1.0);
+                    best_util = better(!for_p1, util, best_util);
+                    break;
+                }
+                case Type::Showdown: {
+                    float util = terminal_util[child_idx] * (p1_wins ? 1.0 : -1.0);
+                    best_util = better(!for_p1, util, best_util);
+                    break;
+                }
+                }
+            }
+
+            return best_util;
+        }
     }
 
     // prints the strategy in this case
@@ -173,7 +243,7 @@ struct InfoSets {
             for (int child_idx = 0; child_idx < num_children; child_idx++) {
                 const float pct = (get_regr(card, child_idx) / sum_regr) * 100.0;
 
-                switch (child_states[ child_idx ]) {
+                switch (child_states[child_idx]) {
                 case Type::Fold:
                     cout << "\t\tFold " << pct << "% of the time\n";
                     break;
@@ -195,7 +265,7 @@ struct InfoSets {
 
 
         for (int child_idx = 0; child_idx < num_children; child_idx++) {
-            if (child_states[ child_idx ] != Type::Continue) continue;
+            if (child_states[child_idx] != Type::Continue) continue;
 
             std::string next_history;
 
@@ -205,7 +275,7 @@ struct InfoSets {
             else
                 next_history = history + " bet " + std::to_string(child_idx);
 
-            children[ child_idx ]->print_strat(next_history);
+            children[child_idx]->print_strat(next_history);
         }
     }
 };
@@ -266,7 +336,7 @@ public:
 
         // bet case(s)
         for (int bet_idx = 0; bet_idx < this_bets.size(); bet_idx++) {
-            const float next_bet = mip * this_bets[ bet_idx ];
+            const float next_bet = mip * this_bets[bet_idx];
 
             InfoSets* child;
 
@@ -302,7 +372,7 @@ public:
 
         // bet case(s)
         for (int bet_idx = 0; bet_idx < this_bets.size(); bet_idx++) {
-            const float next_bet = ante * this_bets[ bet_idx ];
+            const float next_bet = ante * this_bets[bet_idx];
             InfoSets* child = make_child(0.0, next_bet, true, rem_bets);
             ret->add_child(child);
         }
@@ -333,7 +403,7 @@ public:
 
         // bet case(s)
         for (int bet_idx = 0; bet_idx < this_bets.size(); bet_idx++) {
-            const float next_bet = ante * this_bets[ bet_idx ];
+            const float next_bet = ante * this_bets[bet_idx];
             InfoSets* child = make_child(next_bet, 0.0, false, rem_bets);
             ret->add_child(child);
         }
@@ -356,7 +426,7 @@ public:
     float train_state(int card1, int card2, float prob) {
         assert(card1 != card2);
 
-        const bool p1_wins = hand_rankings[ card1 ] > hand_rankings[ card2 ];
+        const bool p1_wins = hand_rankings[card1] > hand_rankings[card2];
 
         return root->get_util(card1, card2, p1_wins, prob);
     }
@@ -369,13 +439,32 @@ public:
             for (int card2 = 0; card2 < NUM_HANDS; card2++) {
                 if (card1 == card2) continue;
 
-                const float prob = starting_prob1[ card1 ] * starting_prob2[ card2 ];
+                const float prob = starting_prob1[card1] * starting_prob2[card2];
 
                 util += prob * train_state(card1, card2, prob);
             }
         }
 
         return util;
+    }
+
+    // get the nash distance in this state
+    std::pair<float, float> nash_dist() {
+        float loss1 = 0.0, loss2 = 0.0;
+
+        for (int card1 = 0; card1 < NUM_HANDS; card1++) {
+            for (int card2 = 0; card2 < NUM_HANDS; card2++) {
+                if (card1 == card2) continue;
+
+                const float prob = starting_prob1[card1] * starting_prob2[card2];
+                const bool p1_wins = hand_rankings[card1] > hand_rankings[card2];
+
+                loss1 += prob * root->get_mes_util(true, card1, card2, p1_wins);
+                loss2 += prob * root->get_mes_util(false, card1, card2, p1_wins);
+            }
+        }
+
+        return { loss1, loss2 };
     }
 
     void print() {

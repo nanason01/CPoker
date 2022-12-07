@@ -12,18 +12,17 @@ int main() {
 
     GameDef game_structure = { bets1 };
 
-    std::array<float, NUM_HANDS> p;
-    p.fill(1.0 / NUM_HANDS);
+    std::array<float, NUM_HANDS> p1 = { 0.5, 0.0, 0.5 }, p2 = { 0.0, 1.0, 0.0 };
 
     std::array<int, NUM_HANDS> hand_ranks;
     for (int i = 0; i < NUM_HANDS; i++)
-        hand_ranks[ i ] = i;
+        hand_ranks[i] = i;
 
     const float ante = 1.0, stack_sz = 10.0;
 
     Game g(
-        p,
-        p,
+        p1,
+        p2,
         hand_ranks,
         ante,
         stack_sz,
@@ -32,6 +31,15 @@ int main() {
 
     for (int i = 0; i < 10000; i++)
         g.train();
+
+    float util = g.train();
+    auto losses = g.nash_dist();
+
+    std::cout << "util in state: " << util << "\n";
+    std::cout << "util from mes against p1: " << losses.first << "\n";
+    std::cout << "util from mes against p2: " << losses.second << "\n";
+
+    std::cout << "nash dist: " << losses.first - losses.second << "\n";
 
     g.print();
 }
