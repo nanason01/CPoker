@@ -16,7 +16,7 @@ int main() {
 
     std::array<int, NUM_HANDS> hand_ranks;
     for (int i = 0; i < NUM_HANDS; i++)
-        hand_ranks[i] = i;
+        hand_ranks[ i ] = i;
 
     const float ante = 1.0, stack_sz = 10.0;
 
@@ -29,17 +29,19 @@ int main() {
         game_structure
     );
 
-    for (int i = 0; i < 10000; i++)
+    for (int i = 0; i < 10; i++)
         g.train();
 
     float util = g.train();
+    g.print();
     auto losses = g.nash_dist();
 
     std::cout << "util in state: " << util << "\n";
     std::cout << "util from mes against p1: " << losses.first << "\n";
     std::cout << "util from mes against p2: " << losses.second << "\n";
 
-    std::cout << "nash dist: " << losses.first - losses.second << "\n";
+    float nash_dist = losses.second - losses.first;
 
-    g.print();
+    std::cout << "nash dist: " << nash_dist << "\n";
+
 }
