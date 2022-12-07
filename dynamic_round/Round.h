@@ -337,4 +337,8 @@ public:
 
         return util;
     }
+
+    void print() {
+        root->print_strat();
+    }
 };

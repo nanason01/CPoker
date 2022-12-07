@@ -1,3 +1,3 @@
 
 all:
-	g++ -std=c++20 runner.cc -o runner
+	g++ -std=c++20 runner.cc -g3 -o runner
