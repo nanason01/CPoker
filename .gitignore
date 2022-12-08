@@ -2,6 +2,7 @@
 test
 *simple_game
 *runner
+*.dSYM
 
 # Prerequisites
 *.d

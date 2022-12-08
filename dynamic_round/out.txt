@@ -1,26 +1,23 @@
-In file included from runner.cc:2:
-./Round.h:111:21: warning: enumeration value 'Invalid' not handled in switch [-Wswitch]
-            switch (child_states[child_idx]) {
-                    ^
-./Round.h:111:21: note: add missing switch cases
-            switch (child_states[child_idx]) {
-                    ^
-./Round.h:182:25: warning: enumeration value 'Invalid' not handled in switch [-Wswitch]
-                switch (child_states[child_idx]) {
-                        ^
-./Round.h:182:25: note: add missing switch cases
-                switch (child_states[child_idx]) {
-                        ^
-./Round.h:205:25: warning: enumeration value 'Invalid' not handled in switch [-Wswitch]
-                switch (child_states[child_idx]) {
-                        ^
-./Round.h:205:25: note: add missing switch cases
-                switch (child_states[child_idx]) {
-                        ^
-./Round.h:255:25: warning: enumeration value 'Invalid' not handled in switch [-Wswitch]
-                switch (child_states[child_idx]) {
-                        ^
-./Round.h:255:25: note: add missing switch cases
-                switch (child_states[child_idx]) {
-                        ^
-4 warnings generated.
+
+p1 facing has strat:
+        With hand 0:
+                Action 0: 99.975% of the time
+                Action 1: 0.0249745% of the time
+        With hand 1:
+                Action 0: 99.8038% of the time
+                Action 1: 0.196228% of the time
+        With hand 2:
+                Action 0: 0.049949% of the time
+                Action 1: 99.9501% of the time
+
+Showdown node at 0 with util: 1
+p2 facing 1 has strat:
+        With hand 0:
+                Action 0: 99.9751% of the time
+                Action 1: 0.0249445% of the time
+        With hand 1:
+                Action 0: 99.8204% of the time
+                Action 1: 0.17958% of the time
+        With hand 2:
+                Action 0: 22.5806% of the time
+                Action 1: 77.4194% of the time

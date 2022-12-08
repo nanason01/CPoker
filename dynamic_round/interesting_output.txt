@@ -1,0 +1,430 @@
+Using inputs:
+
+    10 hands, 1.0 ante, 10.0 stack_sz, {{2,4,5}, {3,4}} no action after check
+
+Got output:
+
+tree sz actual: 3408
+tree sz needed: 2240
+p1 facing has strat:
+        With hand 0:
+                Action 0: 32.9603% of the time
+                Action 1: 0.154884% of the time
+                Action 2: 60.1728% of the time
+                Action 3: 6.71203% of the time
+        With hand 1:
+                Action 0: 99.9998% of the time
+                Action 1: 8.03776e-05% of the time
+                Action 2: 7.72417e-05% of the time
+                Action 3: 7.21575e-05% of the time
+        With hand 2:
+                Action 0: 99.9996% of the time
+                Action 1: 2.81254e-05% of the time
+                Action 2: 2.81254e-05% of the time
+                Action 3: 0.000319607% of the time
+        With hand 3:
+                Action 0: 99.9993% of the time
+                Action 1: 0.000382781% of the time
+                Action 2: 0.000186271% of the time
+                Action 3: 9.5233e-05% of the time
+        With hand 4:
+                Action 0: 99.9988% of the time
+                Action 1: 0.000139047% of the time
+                Action 2: 0.00022623% of the time
+                Action 3: 0.000780835% of the time
+        With hand 5:
+                Action 0: 99.9983% of the time
+                Action 1: 0.000311122% of the time
+                Action 2: 0.000626417% of the time
+                Action 3: 0.000751413% of the time
+        With hand 6:
+                Action 0: 99.9831% of the time
+                Action 1: 0.000682874% of the time
+                Action 2: 0.0152716% of the time
+                Action 3: 0.000970041% of the time
+        With hand 7:
+                Action 0: 99.9167% of the time
+                Action 1: 0.0809364% of the time
+                Action 2: 0.000940643% of the time
+                Action 3: 0.00144178% of the time
+        With hand 8:
+                Action 0: 99.9442% of the time
+                Action 1: 0.0434687% of the time
+                Action 2: 0.0010061% of the time
+                Action 3: 0.0113274% of the time
+        With hand 9:
+                Action 0: 5.61118e-05% of the time
+                Action 1: 0.194599% of the time
+                Action 2: 90.2434% of the time
+                Action 3: 9.5619% of the time
+
+Showdown node at 0 with util: 1
+p2 facing 1 has strat:
+        With hand 0:
+                Action 0: 99.9399% of the time
+                Action 1: 0.0200227% of the time
+                Action 2: 0.0200227% of the time
+                Action 3: 0.0200227% of the time
+        With hand 1:
+                Action 0: 67.1622% of the time
+                Action 1: 31.6698% of the time
+                Action 2: 0.127859% of the time
+                Action 3: 1.04019% of the time
+        With hand 2:
+                Action 0: 74.1205% of the time
+                Action 1: 25.6694% of the time
+                Action 2: 0.100139% of the time
+                Action 3: 0.109929% of the time
+        With hand 3:
+                Action 0: 68.6827% of the time
+                Action 1: 30.0879% of the time
+                Action 2: 0.046521% of the time
+                Action 3: 1.18291% of the time
+        With hand 4:
+                Action 0: 76.9251% of the time
+                Action 1: 22.864% of the time
+                Action 2: 0.103429% of the time
+                Action 3: 0.107484% of the time
+        With hand 5:
+                Action 0: 67.9463% of the time
+                Action 1: 31.2451% of the time
+                Action 2: 0.128516% of the time
+                Action 3: 0.680128% of the time
+        With hand 6:
+                Action 0: 57.5814% of the time
+                Action 1: 38.9846% of the time
+                Action 2: 1.58733% of the time
+                Action 3: 1.84666% of the time
+        With hand 7:
+                Action 0: 39.6744% of the time
+                Action 1: 51.662% of the time
+                Action 2: 5.32419% of the time
+                Action 3: 3.3394% of the time
+        With hand 8:
+                Action 0: 0.297821% of the time
+                Action 1: 98.5694% of the time
+                Action 2: 0.393005% of the time
+                Action 3: 0.739742% of the time
+        With hand 9:
+                Action 0: 0.00865656% of the time
+                Action 1: 0.00865656% of the time
+                Action 2: 35.0019% of the time
+                Action 3: 64.9808% of the time
+
+Fold node at 1 0 with util: 1
+Showdown node at 1 1 with util: 3
+p1 facing 1 2 has strat:
+        With hand 0:
+                Action 0: 99.9273% of the time
+                Action 1: 0.0727327% of the time
+        With hand 1:
+                Action 0: 21.7217% of the time
+                Action 1: 78.2783% of the time
+        With hand 2:
+                Action 0: 50% of the time
+                Action 1: 50% of the time
+        With hand 3:
+                Action 0: 5.86352% of the time
+                Action 1: 94.1365% of the time
+        With hand 4:
+                Action 0: 28.0323% of the time
+                Action 1: 71.9677% of the time
+        With hand 5:
+                Action 0: 12.39% of the time
+                Action 1: 87.61% of the time
+        With hand 6:
+                Action 0: 3.96233% of the time
+                Action 1: 96.0377% of the time
+        With hand 7:
+                Action 0: 93.4013% of the time
+                Action 1: 6.59867% of the time
+        With hand 8:
+                Action 0: 83.3521% of the time
+                Action 1: 16.6479% of the time
+        With hand 9:
+                Action 0: 0.237531% of the time
+                Action 1: 99.7625% of the time
+
+Fold node at 1 2 0 with util: -3
+Showdown node at 1 2 1 with util: 10
+p1 facing 1 3 has strat:
+        With hand 0:
+                Action 0: 99.9761% of the time
+                Action 1: 0.0238792% of the time
+        With hand 1:
+                Action 0: 22.9948% of the time
+                Action 1: 77.0052% of the time
+        With hand 2:
+                Action 0: 50% of the time
+                Action 1: 50% of the time
+        With hand 3:
+                Action 0: 6.37194% of the time
+                Action 1: 93.6281% of the time
+        With hand 4:
+                Action 0: 31.6161% of the time
+                Action 1: 68.3839% of the time
+        With hand 5:
+                Action 0: 15.0021% of the time
+                Action 1: 84.9979% of the time
+        With hand 6:
+                Action 0: 15.2157% of the time
+                Action 1: 84.7843% of the time
+        With hand 7:
+                Action 0: 93.7455% of the time
+                Action 1: 6.2545% of the time
+        With hand 8:
+                Action 0: 63.1182% of the time
+                Action 1: 36.8818% of the time
+        With hand 9:
+                Action 0: 0.540298% of the time
+                Action 1: 99.4597% of the time
+
+Fold node at 1 3 0 with util: -3
+Showdown node at 1 3 1 with util: 11
+p2 facing 2 has strat:
+        With hand 0:
+                Action 0: 99.9998% of the time
+                Action 1: 6.91221e-05% of the time
+                Action 2: 6.91221e-05% of the time
+                Action 3: 6.91221e-05% of the time
+        With hand 1:
+                Action 0: 87.1026% of the time
+                Action 1: 12.8963% of the time
+                Action 2: 0.000524325% of the time
+                Action 3: 0.000524325% of the time
+        With hand 2:
+                Action 0: 83.2074% of the time
+                Action 1: 16.7921% of the time
+                Action 2: 0.000251954% of the time
+                Action 3: 0.000251954% of the time
+        With hand 3:
+                Action 0: 78.4882% of the time
+                Action 1: 21.5114% of the time
+                Action 2: 0.000183658% of the time
+                Action 3: 0.000183658% of the time
+        With hand 4:
+                Action 0: 76.6721% of the time
+                Action 1: 23.3275% of the time
+                Action 2: 0.000215656% of the time
+                Action 3: 0.000215656% of the time
+        With hand 5:
+                Action 0: 76.4731% of the time
+                Action 1: 23.5255% of the time
+                Action 2: 0.000709947% of the time
+                Action 3: 0.000709947% of the time
+        With hand 6:
+                Action 0: 71.0891% of the time
+                Action 1: 28.9099% of the time
+                Action 2: 0.000501593% of the time
+                Action 3: 0.000501593% of the time
+        With hand 7:
+                Action 0: 64.9673% of the time
+                Action 1: 35.0323% of the time
+                Action 2: 0.000214998% of the time
+                Action 3: 0.000214998% of the time
+        With hand 8:
+                Action 0: 65.4524% of the time
+                Action 1: 34.544% of the time
+                Action 2: 0.00180583% of the time
+                Action 3: 0.00180583% of the time
+        With hand 9:
+                Action 0: 4.93322e-05% of the time
+                Action 1: 4.93322e-05% of the time
+                Action 2: 49.9999% of the time
+                Action 3: 49.9999% of the time
+
+Fold node at 2 0 with util: 1
+Showdown node at 2 1 with util: 5
+p1 facing 2 2 has strat:
+        With hand 0:
+                Action 0: 99.9999% of the time
+                Action 1: 0.000103589% of the time
+        With hand 1:
+                Action 0: 19.0615% of the time
+                Action 1: 80.9385% of the time
+        With hand 2:
+                Action 0: 50% of the time
+                Action 1: 50% of the time
+        With hand 3:
+                Action 0: 13.4027% of the time
+                Action 1: 86.5973% of the time
+        With hand 4:
+                Action 0: 7.29444% of the time
+                Action 1: 92.7056% of the time
+        With hand 5:
+                Action 0: 8.07795% of the time
+                Action 1: 91.9221% of the time
+        With hand 6:
+                Action 0: 92.6831% of the time
+                Action 1: 7.3169% of the time
+        With hand 7:
+                Action 0: 4.20163% of the time
+                Action 1: 95.7984% of the time
+        With hand 8:
+                Action 0: 2.95665% of the time
+                Action 1: 97.0434% of the time
+        With hand 9:
+                Action 0: 1.22769% of the time
+                Action 1: 98.7723% of the time
+
+Fold node at 2 2 0 with util: -5
+Showdown node at 2 2 1 with util: 11
+p1 facing 2 3 has strat:
+        With hand 0:
+                Action 0: 99.9999% of the time
+                Action 1: 0.000103589% of the time
+        With hand 1:
+                Action 0: 19.0615% of the time
+                Action 1: 80.9385% of the time
+        With hand 2:
+                Action 0: 50% of the time
+                Action 1: 50% of the time
+        With hand 3:
+                Action 0: 13.4027% of the time
+                Action 1: 86.5973% of the time
+        With hand 4:
+                Action 0: 7.29444% of the time
+                Action 1: 92.7056% of the time
+        With hand 5:
+                Action 0: 8.07795% of the time
+                Action 1: 91.9221% of the time
+        With hand 6:
+                Action 0: 92.6831% of the time
+                Action 1: 7.3169% of the time
+        With hand 7:
+                Action 0: 4.20163% of the time
+                Action 1: 95.7984% of the time
+        With hand 8:
+                Action 0: 2.95665% of the time
+                Action 1: 97.0434% of the time
+        With hand 9:
+                Action 0: 1.22769% of the time
+                Action 1: 98.7723% of the time
+
+Fold node at 2 3 0 with util: -5
+Showdown node at 2 3 1 with util: 11
+p2 facing 3 has strat:
+        With hand 0:
+                Action 0: 99.9971% of the time
+                Action 1: 0.000659489% of the time
+                Action 2: 0.00109915% of the time
+                Action 3: 0.00109915% of the time
+        With hand 1:
+                Action 0: 84.1073% of the time
+                Action 1: 15.8857% of the time
+                Action 2: 0.00350085% of the time
+                Action 3: 0.00350085% of the time
+        With hand 2:
+                Action 0: 81.9022% of the time
+                Action 1: 18.0933% of the time
+                Action 2: 0.00228646% of the time
+                Action 3: 0.00228646% of the time
+        With hand 3:
+                Action 0: 83.6946% of the time
+                Action 1: 16.2906% of the time
+                Action 2: 0.00738638% of the time
+                Action 3: 0.00738638% of the time
+        With hand 4:
+                Action 0: 79.8184% of the time
+                Action 1: 20.1703% of the time
+                Action 2: 0.00562043% of the time
+                Action 3: 0.00562043% of the time
+        With hand 5:
+                Action 0: 76.2636% of the time
+                Action 1: 23.7278% of the time
+                Action 2: 0.00433016% of the time
+                Action 3: 0.00433016% of the time
+        With hand 6:
+                Action 0: 74.0708% of the time
+                Action 1: 25.8975% of the time
+                Action 2: 0.0158584% of the time
+                Action 3: 0.0158584% of the time
+        With hand 7:
+                Action 0: 71.5143% of the time
+                Action 1: 28.4387% of the time
+                Action 2: 0.0234961% of the time
+                Action 3: 0.0234961% of the time
+        With hand 8:
+                Action 0: 62.4411% of the time
+                Action 1: 37.4334% of the time
+                Action 2: 0.0627354% of the time
+                Action 3: 0.0627354% of the time
+        With hand 9:
+                Action 0: 0.0016219% of the time
+                Action 1: 0.0016219% of the time
+                Action 2: 49.9984% of the time
+                Action 3: 49.9984% of the time
+
+Fold node at 3 0 with util: 1
+Showdown node at 3 1 with util: 6
+p1 facing 3 2 has strat:
+        With hand 0:
+                Action 0: 99.9991% of the time
+                Action 1: 0.000931243% of the time
+        With hand 1:
+                Action 0: 19.4889% of the time
+                Action 1: 80.5111% of the time
+        With hand 2:
+                Action 0: 1.81013% of the time
+                Action 1: 98.1899% of the time
+        With hand 3:
+                Action 0: 1.88454% of the time
+                Action 1: 98.1155% of the time
+        With hand 4:
+                Action 0: 0.262643% of the time
+                Action 1: 99.7374% of the time
+        With hand 5:
+                Action 0: 0.18201% of the time
+                Action 1: 99.818% of the time
+        With hand 6:
+                Action 0: 0.199341% of the time
+                Action 1: 99.8007% of the time
+        With hand 7:
+                Action 0: 0.146028% of the time
+                Action 1: 99.854% of the time
+        With hand 8:
+                Action 0: 0.0106721% of the time
+                Action 1: 99.9893% of the time
+        With hand 9:
+                Action 0: 1.26771% of the time
+                Action 1: 98.7323% of the time
+
+Fold node at 3 2 0 with util: -6
+Showdown node at 3 2 1 with util: 11
+p1 facing 3 3 has strat:
+        With hand 0:
+                Action 0: 99.9991% of the time
+                Action 1: 0.000931243% of the time
+        With hand 1:
+                Action 0: 19.4889% of the time
+                Action 1: 80.5111% of the time
+        With hand 2:
+                Action 0: 1.81013% of the time
+                Action 1: 98.1899% of the time
+        With hand 3:
+                Action 0: 1.88454% of the time
+                Action 1: 98.1155% of the time
+        With hand 4:
+                Action 0: 0.262643% of the time
+                Action 1: 99.7374% of the time
+        With hand 5:
+                Action 0: 0.18201% of the time
+                Action 1: 99.818% of the time
+        With hand 6:
+                Action 0: 0.199341% of the time
+                Action 1: 99.8007% of the time
+        With hand 7:
+                Action 0: 0.146028% of the time
+                Action 1: 99.854% of the time
+        With hand 8:
+                Action 0: 0.0106721% of the time
+                Action 1: 99.9893% of the time
+        With hand 9:
+                Action 0: 1.26771% of the time
+                Action 1: 98.7323% of the time
+
+Fold node at 3 3 0 with util: -6
+Showdown node at 3 3 1 with util: 11
+herehereherehereherehereherehereherehereutil from mes against p1: 0.0885064
+util from mes against p2: 0.144602
+nash dist: 0.0560952
