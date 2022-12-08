@@ -18,6 +18,7 @@ using Utility = float;
 
 struct Node {
     float sum_regret;
+    float sum_strats;
 };
 
 class GameTree {
@@ -50,10 +51,10 @@ public:
     GameTree()
         :
         init_probs({ 0.5, 0.0, 0.0, 0.0, 0.0, 0.5 }),
-        first_action(6, { 0.01 }), first_bet_response(6, { 0.01 }) {}
+        first_action(6, { 0.0, 0.0 }), first_bet_response(6, { 0.0, 0.0 }) {}
 
     Utility get_call_utility(int card_1, int card_2) {
-        return card_1 > card_2 ? 3.0 : -3.0;
+        return card_1 > card_2 ? 4.0 : -4.0;
     }
 
     Utility get_fold_utility(int card_1, int card_2) {
@@ -90,8 +91,20 @@ public:
 
         float sum_regr = sum_call_regr + sum_fold_regr;
 
-        float call = sum_call_regr / sum_regr;
-        float fold = sum_fold_regr / sum_regr;
+        float call, fold;
+
+        if (sum_fold_regr < 0.0) {
+            call = 1.0;
+            fold = 0.0;
+        } else if (sum_call_regr < 0.0) {
+            fold = 1.0;
+            call = 0.0;
+        } else if (sum_regr == 0.0) {
+            fold = call = 0.5;
+        } else {
+            call = sum_call_regr / sum_regr;
+            fold = sum_fold_regr / sum_regr;
+        }
 
         // calc utility of each action
         Utility call_util = get_call_utility(card_1, card_2);
@@ -104,7 +117,7 @@ public:
             cout << "call util: " << call_util << " fold util: " << fold_util << "\n";
 
         if (print)
-            cout << "call regr: " << sum_call_regr << " fold regr: " << sum_fold_regr << "\n";
+            cout << "call sum regr: " << sum_call_regr << " fold sum regr: " << sum_fold_regr << "\n";
         if (print)
             cout << "call prob: " << call << " fold prob: " << fold << "\n";
 
@@ -116,11 +129,13 @@ public:
         // update regrets based on utils
         // note: as this is player two, who is trying to minimize utility
         // regrets are in terms of negative utility
-        float call_regr = call_util < curr_util ? curr_util - call_util : 0.0;
-        float fold_regr = fold_util < curr_util ? curr_util - fold_util : 0.0;
+        float call_regr = curr_util - call_util;
+        float fold_regr = curr_util - fold_util;
 
         first_bet_response[(card_2 - 1) * 2].sum_regret += prob * call_regr;
+        first_bet_response[(card_2 - 1) * 2].sum_strats += prob * call;
         first_bet_response[(card_2 - 1) * 2 + 1].sum_regret += prob * fold_regr;
+        first_bet_response[(card_2 - 1) * 2 + 1].sum_strats += prob * fold;
 
         if (print)
             cout << "call regr: " << call_regr << " fold regr: " << fold_regr << "\n";
@@ -142,25 +157,42 @@ public:
 
         float sum_regret = sum_bet_regr + sum_check_regr;
 
-        float bet = sum_bet_regr / sum_regret;
-        float check = sum_check_regr / sum_regret;
+        float bet, check;
+
+        if (sum_bet_regr < 0.0) {
+            check = 1.0;
+            bet = 0.0;
+        } else if (sum_check_regr < 0.0) {
+            bet = 1.0;
+            check = 0.0;
+        } else if (sum_regret == 0.0) {
+            bet = check = 0.5;
+        } else {
+            bet = sum_bet_regr / sum_regret;
+            check = sum_check_regr / sum_regret;
+        }
 
         // recalc utility of each action
         Utility bet_util = train_bet_response(card_1, card_2, bet * prob);
         Utility check_util = get_check_util(card_1, card_2);
 
-        if (print) {
-            cout << "bet util: " << bet_util << " check util: " << check_util << "\n";
+        if (print && card_2 == 2) {
+            cout << "sum regrets for first action:\n";
+            cout << "bet regr: " << sum_bet_regr << " check regr: " << sum_check_regr << "\n";
+            cout << "first action strats:\n";
+            cout << "bet: " << bet << " check: " << check << "\n";
         }
 
         Utility curr_util = bet * bet_util + check * check_util;
 
         // update regrets based on utils
-        float bet_regr = bet_util > curr_util ? bet_util - curr_util : 0.0;
-        float check_regr = check_util > curr_util ? check_util - curr_util : 0.0;
+        float bet_regr = bet_util - curr_util;
+        float check_regr = check_util - curr_util;
 
         first_action[(card_1 - 1) * 2].sum_regret += prob * bet_regr;
+        first_action[(card_1 - 1) * 2].sum_strats += prob * bet;
         first_action[(card_1 - 1) * 2 + 1].sum_regret += prob * check_regr;
+        first_action[(card_1 - 1) * 2 + 1].sum_strats += prob * check;
 
         // return util (calced on old values)
         return curr_util;
@@ -174,7 +206,7 @@ public:
             for (int card_2 = 1; card_2 <= 3; card_2++) {
                 if (card_1 == card_2) continue;
 
-                Utility cur_util = train_first_action(card_1, card_2, get_init_prob(card_1, card_2));
+                Utility cur_util = train_first_action(card_1, card_2, get_init_prob(card_1, card_2), true);
 
                 if (print)
                     cout << card_1 << " " << card_2 << ": " << cur_util << "\n";
@@ -188,36 +220,27 @@ public:
 
     // Print the game tree
     void print() {
-        float sum_reg1 = first_action[0].sum_regret + first_action[1].sum_regret;
-        float sum_reg2 = first_action[2].sum_regret + first_action[3].sum_regret;
-        float sum_reg3 = first_action[4].sum_regret + first_action[5].sum_regret;
+        float sum_reg1 = first_action[0].sum_strats + first_action[1].sum_strats;
+        float sum_reg2 = first_action[2].sum_strats + first_action[3].sum_strats;
+        float sum_reg3 = first_action[4].sum_strats + first_action[5].sum_strats;
 
         cout << "Player 1:\n";
         cout << "1:\n\tBet:" <<
-            first_action[0].sum_regret / sum_reg1 << "\n\tCheck:" <<
-            first_action[1].sum_regret / sum_reg1 << "\n";
-        cout << "2:\n\tBet:" <<
-            first_action[2].sum_regret / sum_reg2 << "\n\tCheck:" <<
-            first_action[3].sum_regret / sum_reg2 << "\n";
+            first_action[0].sum_strats / sum_reg1 << "\n\tCheck:" <<
+            first_action[1].sum_strats / sum_reg1 << "\n";
         cout << "3:\n\tBet:" <<
-            first_action[4].sum_regret / sum_reg3 << "\n\tCheck:" <<
-            first_action[5].sum_regret / sum_reg3 << "\n";
+            first_action[4].sum_strats / sum_reg3 << "\n\tCheck:" <<
+            first_action[5].sum_strats / sum_reg3 << "\n";
 
-        sum_reg1 = first_bet_response[0].sum_regret + first_bet_response[1].sum_regret;
-        sum_reg2 = first_bet_response[2].sum_regret + first_bet_response[3].sum_regret;
-        sum_reg3 = first_bet_response[4].sum_regret + first_bet_response[5].sum_regret;
+        sum_reg1 = first_bet_response[0].sum_strats + first_bet_response[1].sum_strats;
+        sum_reg2 = first_bet_response[2].sum_strats + first_bet_response[3].sum_strats;
+        sum_reg3 = first_bet_response[4].sum_strats + first_bet_response[5].sum_strats;
 
         cout << "\n";
         cout << "Player 2's response to a bet:\n";
-        cout << "1:\n\tCall:" <<
-            first_bet_response[0].sum_regret / sum_reg1 << "\n\tFold:" <<
-            first_bet_response[1].sum_regret / sum_reg1 << "\n";
         cout << "2:\n\tCall:" <<
-            first_bet_response[2].sum_regret / sum_reg2 << "\n\tFold:" <<
-            first_bet_response[3].sum_regret / sum_reg2 << "\n";
-        cout << "3:\n\tCall:" <<
-            first_bet_response[4].sum_regret / sum_reg3 << "\n\tFold:" <<
-            first_bet_response[5].sum_regret / sum_reg3 << "\n";
+            first_bet_response[2].sum_strats / sum_reg2 << "\n\tFold:" <<
+            first_bet_response[3].sum_strats / sum_reg2 << "\n";
     }
 };
 
@@ -227,8 +250,8 @@ int main() {
     cout << "initial strategies:\n";
     gt.print();
 
-    for (int i = 0; i < 10'000'000; i++)
-        gt.train_game();
+    for (int i = 0; i < 1000; i++)
+        gt.train_game(true);
 
     cout << "Ending utility: " << gt.train_game(false) << "\n\n";
 

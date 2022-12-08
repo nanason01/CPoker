@@ -1,0 +1,73 @@
+At the suggestion of Bjarne, I'm going to try to keep a log of my process
+
+To start, I have demo/ which is a working example of the algorithm,
+hard coded to avoid any kind of complex design and just check whether
+I can implement this and it actually works. I check it by hand and it
+matched what I expect.
+
+I have a decent amount of work on using variadic templates to calculate
+game tree values at compile-time, however I think this may be too 
+bottom-up and I think it's likely to run into "I didn't think of that"
+type problems when it gets to a top level. Still, I think it's pretty
+interesting, and I reinvented-the-wheel for a lot of the techniques.
+
+My goal now is to create a working version that allows for a dynamic
+tree shape.
+
+I'm pretty much done with Round.h, however a lot of the early decisions
+are biting, especially using array and an enum for child states. I think
+this is a case of "premature optimization is the root of all evil"
+
+I thought I had it working, then I changed the bet size, and apparently, 
+after confirming that demo also reaches the same incorrect answers,
+I have a fundamental misunderstanding of CFR. I thought the non-negative
+regrets sum to the final strategy and the strategies along the way but
+they are completely disjoint. The sum of running regrets determines the
+strategy for an iteration, if a sum is negative, then the strategy prob
+is 0. The average strategy used across all iterations is the thing that's 
+guaranteed to converge to a Nash Equilibrium. It's late and I've accumulated
+quite a bit of debt to exhaust other bugs, so I think I'll rewrite this
+with the actual CFR algorithm and the abstractions above tomorrow morning.
+
+Wow, it is so much cleaner, and it actually works for multiple inputs.
+There is quite a bit of overhead, but all of the functions are a ton more
+readable (and it actually works). There's a slight bug in the optimization
+of a node that never gets reached. This causes it to kind of freeze from 
+future updates, but this throws mes off. It works for most simple cases
+though, and I don't think it's a good use of time to try to hunt down the
+last bug when the actual strategy looks very reasonable.
+
+It's 2 pm on Friday and I'm debating the rest of what I have to do:
+    generate performance information
+    template out Node and Game tree
+    writeup a presentation for CFR
+    writeup the part of that for my code
+    writeup tutorial and documentation
+
+I would like to start rewriting Game in a template-recursive format,
+and I think having a reference implementation now makes that pretty doable.
+However, this is probably the absolute lowest priority. I think where
+mes does work, it's a pretty interesting graph of nash dist after x iterations
+I can also show the space-overhead computed as my_size vs theoretical efficient size
+
+Presentation plan:
+    spend ~15 mins on understanding poker, CFR, and why it's cool 
+    talk about the design of my naive solver
+        sample output
+        the space overhead
+        optimization graphs
+        future goals: template everything, parallelize updates
+
+Documentation plan:
+    quick intro to CFR
+    overview of demo.cc
+    overview of dynamic_round/
+    overview of templating playground and future direction
+
+Tutorial plan:
+    i/o guide and interpretation
+    then specifically for demo.cc and dynamic_round
+
+If I have time tonight, then I'll also try another iteration to move things
+to compile time. But it's unlikely I'll be able to get to a comparable point
+and run some time comparison and also sleep tonight.
