@@ -1,0 +1,26 @@
+In file included from runner.cc:2:
+./Round.h:111:21: warning: enumeration value 'Invalid' not handled in switch [-Wswitch]
+            switch (child_states[child_idx]) {
+                    ^
+./Round.h:111:21: note: add missing switch cases
+            switch (child_states[child_idx]) {
+                    ^
+./Round.h:182:25: warning: enumeration value 'Invalid' not handled in switch [-Wswitch]
+                switch (child_states[child_idx]) {
+                        ^
+./Round.h:182:25: note: add missing switch cases
+                switch (child_states[child_idx]) {
+                        ^
+./Round.h:205:25: warning: enumeration value 'Invalid' not handled in switch [-Wswitch]
+                switch (child_states[child_idx]) {
+                        ^
+./Round.h:205:25: note: add missing switch cases
+                switch (child_states[child_idx]) {
+                        ^
+./Round.h:255:25: warning: enumeration value 'Invalid' not handled in switch [-Wswitch]
+                switch (child_states[child_idx]) {
+                        ^
+./Round.h:255:25: note: add missing switch cases
+                switch (child_states[child_idx]) {
+                        ^
+4 warnings generated.
