@@ -35,6 +35,8 @@ struct InfoSets {
         Invalid,
     };
 
+    using CardDistro = std::array<float, NUM_HANDS>;
+
     // the position of this node in the tree
     std::string debug_position = "";
 
@@ -56,6 +58,11 @@ struct InfoSets {
 
     inline float& get_regr(const int card, const int child_idx) {
         return sum_child_regr[card][child_idx];
+    }
+
+    // this is hardcoded for now, but eventually this should read from some central source
+    static bool p1_wins(int card1, int card2) {
+        return card1 > card2;
     }
 
     // needed to default initialize arrays
@@ -97,7 +104,7 @@ struct InfoSets {
         return get_regr(info_state_card, child_idx) / sum_regr;
     }
 
-    float get_util(int card1, int card2, bool p1_wins, float prob_in) {
+    float get_util(int card1, int card2, float prob_in) {
         const int info_state_card = is_p1 ? card1 : card2;
 
         // strategy is just normalized sum_child_regrs (for this state)
@@ -119,13 +126,13 @@ struct InfoSets {
 
             switch (child_states[child_idx]) {
             case Type::Continue:
-                child_utils[child_idx] = children[child_idx]->get_util(card1, card2, p1_wins, prob_in * strat_prob);
+                child_utils[child_idx] = children[child_idx]->get_util(card1, card2, prob_in * strat_prob);
                 break;
             case Type::Fold:
                 child_utils[child_idx] = terminal_util[child_idx] * (is_p1 ? -1.0 : 1.0);
                 break;
             case Type::Showdown:
-                child_utils[child_idx] = terminal_util[child_idx] * (p1_wins ? 1.0 : -1.0);
+                child_utils[child_idx] = terminal_util[child_idx] * (p1_wins(card1, card2) ? 1.0 : -1.0);
                 break;
             }
 
@@ -175,63 +182,96 @@ struct InfoSets {
             return std::min(util1, util2);
     }
 
+    // returns the swing from card facing card_distro in showdown
+    // negative means card is more likely to lose than win
+    static float get_showdown_swing(int card, const CardDistro& card_distro) {
+        float sum_prob = 0.0, norm = std::accumulate(card_distro.begin(), card_distro.end(), 0.0);
+
+        for (int p2_card = 0; p2_card < NUM_HANDS; p2_card++) {
+            if (p2_card == card) continue;
+
+            if (p1_wins(card, p2_card))
+                sum_prob += card_distro[p2_card];
+            else
+                sum_prob -= card_distro[p2_card];
+        }
+
+        return sum_prob / norm;
+    }
+
     // get the utility for a player facing a maximally exploitative strategy
     // the player must play their strategy
     // but the other player will always put 100% into the highest utility node for them,
-    // also calculated using the mes
-    float get_mes_util(bool for_p1, int card1, int card2, bool p1_wins, std::string history = "") {
-        // must play the strategy case
-        if (is_p1 == for_p1) {
-            const float sum_regr = get_sum_regr(is_p1 ? card1 : card2);
-
+    // based on the distribution of hands the opponent may have in a situation
+    float get_mes_util(bool against_p1, int card, const CardDistro& card_distro) {
+        // must play strategy
+        if (is_p1 == against_p1) {
             float util = 0.0;
             for (int child_idx = 0; child_idx < num_children; child_idx++) {
-                const float strat_prob = get_strat_prob(is_p1 ? card1 : card2, child_idx, sum_regr);
+
+                // the distribution that will be forwarded
+                CardDistro fwd_distro = card_distro;
+                // the overall probability of being in this distribution vs another child distro
+                float distro_prob = 0.0;
+                // for each card, there's a different filtering of the distro
+                for (int fwd_card = 0; fwd_card < NUM_HANDS; fwd_card++) {
+                    if (fwd_card == card)
+                        continue;
+
+                    // strat prob is the prob this fwd_card goes to this state
+                    // this will reshape the card distribution
+                    const float sum_regr = get_sum_regr(fwd_card);
+                    const float strat_prob = get_strat_prob(fwd_card, child_idx, sum_regr);
+                    fwd_distro[fwd_card] *= strat_prob;
+
+                    // keep track of the overall probability of a distribution
+                    // the sum of probs for each card across its child states must be 1
+                    // so normalize this by num of hands minus 1 (-1 to account for card)
+                    distro_prob += strat_prob / (NUM_HANDS - 1);
+                    // this is probably a roundabout way to compute this, coming directly
+                    // from regret is probably more efficient. But a) I don't have much time
+                    // so TODO, and b) this is not the hot path.
+                }
+
+                const float showdown_swing = get_showdown_swing(card, fwd_distro);
 
                 switch (child_states[child_idx]) {
                 case Type::Continue:
-                    util += strat_prob * children[child_idx]->get_mes_util(for_p1, card1, card2, p1_wins, history + std::to_string(child_idx) + " ");
+                    util += distro_prob * children[child_idx]->get_mes_util(against_p1, card, fwd_distro);
                     break;
                 case Type::Fold:
-                    util += strat_prob * terminal_util[child_idx] * (is_p1 ? -1.0 : 1.0);
+                    util += distro_prob * terminal_util[child_idx] * (is_p1 ? -1.0 : 1.0);
                     break;
                 case Type::Showdown:
-                    util += strat_prob * terminal_util[child_idx] * (p1_wins ? 1.0 : -1.0);
+                    util += distro_prob * terminal_util[child_idx] * showdown_swing;
                     break;
                 }
             }
-
-            dprint("mes for %s with card1: %d, card2: %d, hist %s has util %f\n", for_p1 ? "player 1" : "player 2", card1, card2, history.c_str(), util);
             return util;
         }
-        // only play the best outcome case
+        // maximally exploit case
         else {
-            const float sum_regr = get_sum_regr(is_p1 ? card1 : card2);
+            // here we can choose which child state to go to
+            // so always pick the child state with the highest exploited util
+            float util = better(is_p1, std::numeric_limits<float>::min(), std::numeric_limits<float>::max());
 
-            float best_util = better(for_p1, std::numeric_limits<float>::min(), std::numeric_limits<float>::max());
+            float showdown_swing = get_showdown_swing(card, card_distro);
 
             for (int child_idx = 0; child_idx < num_children; child_idx++) {
                 switch (child_states[child_idx]) {
-                case Type::Continue: {
-                    float util = children[child_idx]->get_mes_util(for_p1, card1, card2, p1_wins, history + std::to_string(child_idx) + " ");
-                    best_util = better(!for_p1, util, best_util);
+                case Type::Continue:
+                    util = better(is_p1, util, children[child_idx]->get_mes_util(against_p1, card, card_distro));
                     break;
-                }
-                case Type::Fold: {
-                    float util = terminal_util[child_idx] * (is_p1 ? -1.0 : 1.0);
-                    best_util = better(!for_p1, util, best_util);
+                case Type::Fold:
+                    util = better(is_p1, util, terminal_util[child_idx] * (is_p1 ? -1.0 : 1.0));
                     break;
-                }
-                case Type::Showdown: {
-                    float util = terminal_util[child_idx] * (p1_wins ? 1.0 : -1.0);
-                    best_util = better(!for_p1, util, best_util);
+                case Type::Showdown:
+                    util = better(is_p1, util, terminal_util[child_idx] * showdown_swing);
                     break;
-                }
                 }
             }
 
-            dprint("mes for %s with card1: %d, card2: %d, hist %s has util %f\n", for_p1 ? "player 1" : "player 2", card1, card2, history.c_str(), best_util);
-            return best_util;
+            return util;
         }
     }
 
@@ -445,9 +485,7 @@ public:
     float train_state(int card1, int card2, float prob) {
         assert(card1 != card2);
 
-        const bool p1_wins = hand_rankings[card1] > hand_rankings[card2];
-
-        return root->get_util(card1, card2, p1_wins, prob);
+        return root->get_util(card1, card2, prob);
     }
 
     // returns the util after training one iteration
@@ -472,24 +510,13 @@ public:
         float loss1 = 0.0, loss2 = 0.0;
 
         for (int card1 = 0; card1 < NUM_HANDS; card1++) {
-            for (int card2 = 0; card2 < NUM_HANDS; card2++) {
-                if (card1 == card2) continue;
-
-                const float prob = starting_prob1[card1] * starting_prob2[card2];
-                const bool p1_wins = hand_rankings[card1] > hand_rankings[card2];
-
-                loss1 += prob * root->get_mes_util(true, card1, card2, p1_wins);
-            }
+            const float prob = starting_prob1[card1];
+            loss1 += root->get_mes_util(true, card1, starting_prob2);
         }
-        for (int card1 = 0; card1 < NUM_HANDS; card1++) {
-            for (int card2 = 0; card2 < NUM_HANDS; card2++) {
-                if (card1 == card2) continue;
 
-                const float prob = starting_prob1[card1] * starting_prob2[card2];
-                const bool p1_wins = hand_rankings[card1] > hand_rankings[card2];
-
-                loss2 += prob * root->get_mes_util(false, card1, card2, p1_wins);
-            }
+        for (int card2 = 0; card2 < NUM_HANDS; card2++) {
+            const float prob = starting_prob2[card2];
+            loss2 += root->get_mes_util(false, card2, starting_prob1);
         }
 
         return { loss1, loss2 };
