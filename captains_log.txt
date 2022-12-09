@@ -71,3 +71,8 @@ Tutorial plan:
 If I have time tonight, then I'll also try another iteration to move things
 to compile time. But it's unlikely I'll be able to get to a comparable point
 and run some time comparison and also sleep tonight.
+
+I did not have enough time. I finished the tutorial at around 9:15 and just now finished
+creating materials for my presentation tomorrow. I worked in the presentation_stuff
+branch, you can look there for a general idea of my data or to check my outputs.
+The slides for that are done as of 12:15 am. Last thing to do is write the docs.
