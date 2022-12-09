@@ -7,7 +7,7 @@ using Bet = std::vector<float>;
 using GameDef = std::deque<Bet>;
 
 int main() {
-    Bet bets = { 2.0, 4.0 }, raises = { 3.0 };
+    Bet bets = { 1.0, 2.0, 3.0 }, raises = { 3.0 };
 
     GameDef game_structure = { bets, raises };
 

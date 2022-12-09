@@ -41,9 +41,7 @@ public:
     }
 
     // prints the strat, nothing to do for a terminal node
-    virtual void print_strat(const std::string& history = "") final {
-        std::cout << "Showdown node at" << history << "with util: " << util << "\n";
-    }
+    virtual void print_strat(const std::string& history = "") final {}
 
     // return the size of this class in bytes, including the size of descendant Nodes
     virtual int size_bytes() final {

@@ -70,19 +70,41 @@ public:
     // card_distro: the distribution of the exploited's hands
     virtual float get_mes_util(bool against_p1, int card, CardDistro card_distro) final;
 
-    virtual void print_strat(const std::string& history = " ") final {
+    static void csv_print_helper(bool is_p1, const std::string& history, int card, int action, float strat) {
         using std::cout;
 
         if (is_p1)
-            cout << "p1 facing" << history << "has strat:\n";
+            cout << "1,";
         else
-            cout << "p2 facing" << history << "has strat:\n";
+            cout << "2,";
 
+        cout << "\"" << history << "\",";
+        cout << card << ",";
+        cout << action << ",";
+        cout << strat << "\n";
+    }
+
+    virtual void print_strat(const std::string& history = " ") final {
+        using std::cout;
 
         for (int card = 0; card < NUM_HANDS; card++) {
             Strategy nash_strat = get_equilibrium_strategy(card);
 
-            cout << "\tWith hand " << card << ":\n";
+            for (int action = 0; action < children.size(); action++) {
+                csv_print_helper(is_p1, history, card, action, nash_strat[ action ]);
+            }
+        }
+
+        /*
+        if (is_p1)
+            cout << "1," << history << ",";
+        else
+            cout << "2," << history << ",";
+
+
+        for (int card = 0; card < NUM_HANDS; card++) {
+
+            cout << card << ",";
 
             for (int idx = 0; idx < children.size(); idx++) {
                 cout << "\t\tAction " << idx << ": " << nash_strat[ idx ] * 100.0 << "% of the time\n";
@@ -90,7 +112,7 @@ public:
         }
 
         cout << "\n";
-
+        */
         for (int idx = 0; idx < children.size(); idx++) {
             children[ idx ]->print_strat(history + std::to_string(idx) + " ");
         }
