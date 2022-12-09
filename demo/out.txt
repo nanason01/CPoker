@@ -1,0 +1,13 @@
+Ending optimal strategies:
+Player 1:
+1:
+	Bet:0.52285
+	Check:0.47715
+3:
+	Bet:0.9995
+	Check:0.0005
+
+Player 2's response to a bet:
+2:
+	Call:0.510605
+	Fold:0.489395

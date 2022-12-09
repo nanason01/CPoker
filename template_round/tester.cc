@@ -8,8 +8,8 @@
 
 // #include "Configs.h"
 // #include "Pack.h"
-// #include "Bet.h"
-// #include "Round.h"
+#include "Bet.h"
+#include "Round.h"
 
 template <bool b, int i>
 struct Test {
@@ -40,7 +40,17 @@ std::ostream& operator << (std::ostream& os, const std::ratio<num, dem>& v) {
 using std::cout;
 
 int main() {
-    Test<false, 4> f_test;
+    using bets = Bet<30, 60, 150>;
+    using raises = Bet<300, 500>;
 
-    cout << sizeof(f_test) << "\n";
+    using round = Round<bets, raises>;
+
+    cout << round::mta<2>() << "\n";  // 0.3
+    cout << round::mip<2>() << "\n";  // 1.3
+
+    cout << round::mta<2, 2>() << "\n";  // 3.9
+    cout << round::mip<2, 2>() << "\n";  // 5.2
+
+    cout << round::mta<4, 3>() << "\n";  // 10
+    cout << round::is_all_in<4, 3>() << "\n";  // 1
 }

@@ -38,7 +38,7 @@
 // and any available bet/raise sizes defined indexed from 2 on
 //
 template <typename... bets>
-class _Round {
+class Round {
 public:  // TODO: finegrain public/private fxns
     static_assert(sizeof...(bets) > 0, "Must have at least one betting round");
 
