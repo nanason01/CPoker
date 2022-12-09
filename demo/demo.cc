@@ -223,35 +223,41 @@ public:
 
     // Print the game tree
     void print() {
-        float sum_reg1 = first_action[ 0 ].sum_strats + first_action[ 1 ].sum_strats;
-        float sum_reg2 = first_action[ 2 ].sum_strats + first_action[ 3 ].sum_strats;
-        float sum_reg3 = first_action[ 4 ].sum_strats + first_action[ 5 ].sum_strats;
+        float sum_strat1 = first_action[ 0 ].sum_strats + first_action[ 1 ].sum_strats;
+        float sum_strat2 = first_action[ 2 ].sum_strats + first_action[ 3 ].sum_strats;
+        float sum_strat3 = first_action[ 4 ].sum_strats + first_action[ 5 ].sum_strats;
 
         cout << "Player 1:\n";
         cout << "1:\n\tBet:" <<
-            first_action[ 0 ].sum_strats / sum_reg1 << "\n\tCheck:" <<
-            first_action[ 1 ].sum_strats / sum_reg1 << "\n";
+            first_action[ 0 ].sum_strats / sum_strat1 << "\n\tCheck:" <<
+            first_action[ 1 ].sum_strats / sum_strat1 << "\n";
+        cout << "2:\n\tBet:" <<
+            first_action[ 2 ].sum_strats / sum_strat2 << "\n\tCheck:" <<
+            first_action[ 3 ].sum_strats / sum_strat2 << "\n";
         cout << "3:\n\tBet:" <<
-            first_action[ 4 ].sum_strats / sum_reg3 << "\n\tCheck:" <<
-            first_action[ 5 ].sum_strats / sum_reg3 << "\n";
+            first_action[ 4 ].sum_strats / sum_strat3 << "\n\tCheck:" <<
+            first_action[ 5 ].sum_strats / sum_strat3 << "\n";
 
-        sum_reg1 = first_bet_response[ 0 ].sum_strats + first_bet_response[ 1 ].sum_strats;
-        sum_reg2 = first_bet_response[ 2 ].sum_strats + first_bet_response[ 3 ].sum_strats;
-        sum_reg3 = first_bet_response[ 4 ].sum_strats + first_bet_response[ 5 ].sum_strats;
+        sum_strat1 = first_bet_response[ 0 ].sum_strats + first_bet_response[ 1 ].sum_strats;
+        sum_strat2 = first_bet_response[ 2 ].sum_strats + first_bet_response[ 3 ].sum_strats;
+        sum_strat3 = first_bet_response[ 4 ].sum_strats + first_bet_response[ 5 ].sum_strats;
 
         cout << "\n";
         cout << "Player 2's response to a bet:\n";
+        cout << "1:\n\tCall:" <<
+            first_bet_response[ 0 ].sum_strats / sum_strat2 << "\n\tFold:" <<
+            first_bet_response[ 1 ].sum_strats / sum_strat2 << "\n";
         cout << "2:\n\tCall:" <<
-            first_bet_response[ 2 ].sum_strats / sum_reg2 << "\n\tFold:" <<
-            first_bet_response[ 3 ].sum_strats / sum_reg2 << "\n";
+            first_bet_response[ 2 ].sum_strats / sum_strat2 << "\n\tFold:" <<
+            first_bet_response[ 3 ].sum_strats / sum_strat2 << "\n";
+        cout << "3:\n\tCall:" <<
+            first_bet_response[ 4 ].sum_strats / sum_strat2 << "\n\tFold:" <<
+            first_bet_response[ 5 ].sum_strats / sum_strat2 << "\n";
     }
 };
 
 int main() {
     GameTree gt;
-
-    cout << "initial strategies:\n";
-    gt.print();
 
     for (int i = 0; i < 1000; i++)
         gt.train_game(false);
